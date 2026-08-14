@@ -1,0 +1,29 @@
+# Project TODO
+
+- [x] Define a normalized server-management domain model for servers, templates, operations, console events, backups, memberships, permissions, profiles, plugins, installations, and public listings.
+- [x] Implement exact user-facing role names: owner, developer, moderator, mapper, and GM.
+- [x] Implement exact permission labels: console, players, plugins, scripts, database, backups, and settings.
+- [x] Implement user-scoped server creation with only Tibia 8.0 available as a game-version choice.
+- [x] Implement server-template choices labeled exactly Global 8.0, High Rate, Hardcore, and Empty World.
+- [x] Implement database selection between automatic SQLite and advanced PostgreSQL/MySQL.
+- [x] Implement server lifecycle controls and persisted status, player count, IP address, uptime, CPU usage, and RAM usage metrics.
+- [x] Implement a commandable console-event stream with server-side audit records.
+- [x] Implement per-server Players, World, Database, Files, Settings, and Backups management views.
+- [x] Implement plugin catalog search, engine-version compatibility checks, and install/uninstall actions without fabricated ratings or reviews.
+- [x] Implement automatic/manual backup records and validated full-restore workflow metadata covering the required artifact categories.
+- [x] Implement server-team membership, exact role assignment, and granular permission toggles.
+- [x] Implement server-profile snapshots and clone workflow metadata.
+- [x] Implement opt-in public server discovery with version, rate, PvP mode, and live-player count.
+- [x] Build the clean blueprint-inspired responsive interface with a white grid, technical labels, large black headlines, and restrained cyan/pink wireframe accents.
+- [x] Write Vitest coverage for access control, lifecycle transitions, creation constraints, permissions, plugin compatibility, profile cloning, and backup restore validation.
+- [x] Validate the production build, type checking, database migration, responsive user interface, and core workflows.
+- [x] Document the production-engine boundary, including the external host-agent contract needed for genuine remote server process control.
+- [x] Implement a cryptographically scoped host-agent registration and telemetry channel for live observed server state, metrics, lifecycle confirmation, and console events.
+- [x] Implement a server-sent event feed for authenticated console updates rather than relying on client polling.
+- [x] Implement functional Players, World, Database, and Files management surfaces backed by persisted host-agent state and authorized mutations.
+- [x] Implement host-agent restore completion and failure acknowledgment with artifact reconciliation metadata.
+- [x] Implement a team-management interface that assigns exact roles and changes exact granular permissions.
+- [x] Implement a profile browser and clone interface with owner-only behavior.
+- [x] Add router-level Vitest coverage for authorization-sensitive team, backup, profile, and lifecycle operations.
+- [x] Run authenticated end-to-end workflow validation for create, telemetry, console, plugin, backup, collaboration, profile, and discovery flows.
+- [x] Add integrated handler coverage for host-agent telemetry ingestion, restore acknowledgment, and authenticated console streaming.

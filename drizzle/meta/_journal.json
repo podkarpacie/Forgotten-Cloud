@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786715426485,
+      "tag": "0000_real_night_thrasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786715897478,
+      "tag": "0001_unusual_quicksilver",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786716267063,
+      "tag": "0002_clumsy_wild_child",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786716515457,
+      "tag": "0003_spotty_runaways",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786716818469,
+      "tag": "0004_grey_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786716988096,
+      "tag": "0005_uneven_toad",
+      "breakpoints": true
+    }
+  ]
+}
