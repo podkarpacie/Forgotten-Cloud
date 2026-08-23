@@ -185,8 +185,9 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      Takes effect after restarting the panel. There is no login by design — anyone
-                      on the network can manage servers, so share only with machines you trust.
+                      Applies to the panel and to game servers (they listen on all interfaces and
+                      advertise this machine's LAN address). Takes effect the next time each server
+                      starts. There is no login by design - share only with machines you trust.
                     </p>
                   </div>
                 </div>

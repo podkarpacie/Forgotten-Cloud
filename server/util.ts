@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 
 export function newId(prefix: string): string {
@@ -62,6 +63,16 @@ export async function findFreePortBlock(start: number, size: number): Promise<nu
 export function humanError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+/** First non-internal IPv4 address of this machine, for advertising to LAN clients. */
+export function primaryLanIp(): string | null {
+  for (const interfaces of Object.values(os.networkInterfaces())) {
+    for (const info of interfaces ?? []) {
+      if (info.family === "IPv4" && !info.internal) return info.address;
+    }
+  }
+  return null;
 }
 
 export function httpError(status: number, message: string): Error {

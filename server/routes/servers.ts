@@ -13,7 +13,7 @@ import { startInstall } from "../engine/installer";
 import * as supervisor from "../engine/supervisor";
 import { applyConfigValues, extractValue } from "../configlua";
 import type { ProfileId, ServerMeta, ServerPorts } from "../types";
-import { dirSize, findFreePortBlock, httpError, newId, run } from "../util";
+import { dirSize, findFreePortBlock, httpError, newId, primaryLanIp, run } from "../util";
 
 export const serversRouter = express.Router();
 
@@ -52,8 +52,14 @@ function writeWorldConfig(meta: ServerMeta): void {
     ? fs.readFileSync(configPath, "utf-8")
     : "-- Forgotten Engine configuration\n-- Managed by Forgotten Cloud\n";
 
+  // LAN sharing: game listeners bind all interfaces and login responses
+  // advertise this machine's LAN address so other devices can connect.
+  const lan = loadSettings().networkAccess === "lan";
+  const bindIp = lan ? "0.0.0.0" : "127.0.0.1";
+  const advertisedHost = lan ? (primaryLanIp() ?? "127.0.0.1") : "127.0.0.1";
+
   lua = applyConfigValues(lua, {
-    ip: "127.0.0.1",
+    ip: bindIp,
     statusProtocolPort: meta.ports.status,
     gameProtocolPort: meta.ports.game,
     serverName: meta.name,
@@ -64,7 +70,7 @@ function writeWorldConfig(meta: ServerMeta): void {
       ? {
           gameSessionEnabled: true,
           gameSessionPort: meta.ports.session,
-          advertisedGameSessionHost: "127.0.0.1",
+          advertisedGameSessionHost: advertisedHost,
           advertisedGameSessionPort: meta.ports.session,
         }
       : {}),
@@ -75,7 +81,7 @@ function writeWorldConfig(meta: ServerMeta): void {
           otclientV8NativeEnabled: true,
           otclientV8LoginPort: meta.ports.otcLogin,
           otclientV8GamePort: meta.ports.otcGame,
-          advertisedOtClientV8Host: "127.0.0.1",
+          advertisedOtClientV8Host: advertisedHost,
           advertisedOtClientV8GamePort: meta.ports.otcGame,
           otclientV8ProtocolVersion: 740,
           otclientV8NumericAccountIds: true,
@@ -298,6 +304,14 @@ serversRouter.post("/:id/start", async (req, res, next) => {
     }
 
     await supervisor.startServer(meta.id, bin);
+    if (loadSettings().networkAccess === "lan") {
+      const ports = [meta.ports.status, meta.ports.game, meta.ports.otcLogin, meta.ports.otcGame]
+        .filter((value): value is number => value != null);
+      supervisor.pushSystemLine(
+        meta.id,
+        `LAN sharing on - clients connect to ${primaryLanIp() ?? "<lan-ip>"}; open TCP ${ports.join(", ")} in Windows Firewall`,
+      );
+    }
     res.json(supervisor.getRuntimeSnapshot(meta.id));
   } catch (error) {
     next(error);
