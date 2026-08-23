@@ -140,9 +140,9 @@ export default function FilesTab({ id }: { id: string }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
       {/* Explorer */}
-      <div className="glass-panel rounded-xl p-3">
+      <div className="panel rounded-lg p-3">
         <div className="mb-2 flex items-center justify-between gap-1">
-          <div className="mono-label truncate">{cwd}</div>
+          <div className="label-meta truncate">{cwd}</div>
           <div className="flex gap-1">
             <Button size="icon" variant="ghost" className="h-7 w-7" title="New folder" onClick={() => setCreating("dir")}>
               <FolderPlus className="h-3.5 w-3.5" />
@@ -246,7 +246,7 @@ export default function FilesTab({ id }: { id: string }) {
       </div>
 
       {/* Editor */}
-      <div className="glass-panel flex min-h-[56vh] flex-col rounded-xl p-3">
+      <div className="panel flex min-h-[56vh] flex-col rounded-lg p-3">
         {openFile === null ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Select a text file to edit it here.
@@ -254,7 +254,7 @@ export default function FilesTab({ id }: { id: string }) {
         ) : (
           <>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="mono-label truncate">{openFile}{dirty ? " · modified" : ""}</div>
+              <div className="label-meta truncate">{openFile}{dirty ? " · modified" : ""}</div>
               <div className="flex gap-2">
                 <Button size="sm" disabled={!dirty} onClick={() => void save()}>
                   <Save className="mr-1.5 h-3.5 w-3.5" /> Save
@@ -304,3 +304,5 @@ export default function FilesTab({ id }: { id: string }) {
     </div>
   );
 }
+
+

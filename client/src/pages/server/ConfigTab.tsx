@@ -73,7 +73,7 @@ export default function ConfigTab({ id }: { id: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="mono-label flex cursor-pointer items-center gap-2">
+        <label className="label-meta flex cursor-pointer items-center gap-2">
           <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
           show advanced keys
         </label>
@@ -93,7 +93,7 @@ export default function ConfigTab({ id }: { id: string }) {
         return (
           <Card key={group}>
             <CardContent className="pt-5">
-              <div className="mono-label mb-3">{group}</div>
+              <div className="label-meta mb-3">{group}</div>
               <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
                 {visible.map((entry) => (
                   <div key={entry.key} className={entry.type === "stages" ? "md:col-span-2" : ""}>
@@ -167,3 +167,4 @@ export default function ConfigTab({ id }: { id: string }) {
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ import {
 } from "react";
 
 export type ThemeMode = "dark" | "light" | "midnight";
-export type ThemeAccent = "cyan" | "violet" | "ember" | "lime";
+export type ThemeAccent = "graphite" | "teal" | "plum" | "amber";
 
 interface ThemeState {
   mode: ThemeMode;
@@ -23,7 +23,7 @@ interface ThemeState {
 const COOKIE_NAME = "fc_theme";
 const DEFAULTS: ThemeState = {
   mode: "dark",
-  accent: "cyan",
+  accent: "graphite",
   motion: true,
 } as never;
 
@@ -33,7 +33,13 @@ function readCookie(): Partial<Pick<ThemeState, "mode" | "accent" | "motion">> {
     .find((entry) => entry.startsWith(`${COOKIE_NAME}=`));
   if (!pair) return {};
   try {
-    return JSON.parse(decodeURIComponent(pair.slice(COOKIE_NAME.length + 1)));
+    const parsed = JSON.parse(decodeURIComponent(pair.slice(COOKIE_NAME.length + 1)));
+    // Migrate pre-v2.1 accent names gracefully.
+    const legacy: Record<string, ThemeAccent> = { cyan: "graphite", violet: "plum", ember: "amber", lime: "teal" };
+    if (typeof parsed.accent === "string" && parsed.accent in legacy) {
+      parsed.accent = legacy[parsed.accent];
+    }
+    return parsed;
   } catch {
     return {};
   }

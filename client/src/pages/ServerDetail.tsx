@@ -167,8 +167,7 @@ export default function ServerDetail() {
                 {activeTab === tab.id && (
                   <motion.span
                     layoutId={`tab-underline-${meta.id}`}
-                    className="absolute inset-x-2 -bottom-px h-0.5 rounded-full"
-                    style={{ background: "var(--brand)" }}
+                    className="absolute inset-x-3 -bottom-px h-0.5 bg-foreground/70"
                     transition={{ type: "spring", stiffness: 500, damping: 40 }}
                   />
                 )}
@@ -199,3 +198,5 @@ export default function ServerDetail() {
     </div>
   );
 }
+
+

@@ -96,14 +96,14 @@ export default function DatabaseTab({ id }: { id: string }) {
           <TabsTrigger value="players">Players & accounts</TabsTrigger>
         </TabsList>
         {info && (
-          <span className="mono-label">
+          <span className="label-meta">
             {info.file} · {(info.bytes / 1024).toFixed(1)} KB · schema v{info.schemaVersion ?? "?"}
           </span>
         )}
       </div>
 
       <TabsContent value="browse" className="grid gap-4 lg:grid-cols-[260px_1fr]">
-        <ScrollArea className="glass-panel h-[56vh] rounded-xl p-2">
+        <ScrollArea className="panel h-[56vh] rounded-lg p-2">
           {tables.map((table) => (
             <button
               key={table.name}
@@ -127,7 +127,7 @@ export default function DatabaseTab({ id }: { id: string }) {
             ) : (
               <>
                 <div className="flex items-center justify-between border-b px-3 py-2">
-                  <div className="mono-label">{selected} · first 100 of {total}</div>
+                  <div className="label-meta">{selected} · first 100 of {total}</div>
                   <a href={`/api/servers/${id}/export-table?table=${selected}&format=csv`}>
                     <Button size="sm" variant="ghost">
                       <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
@@ -170,12 +170,12 @@ export default function DatabaseTab({ id }: { id: string }) {
 
       <TabsContent value="query">
         <div className="space-y-3">
-          <label className="mono-label flex cursor-pointer items-center gap-2">
+          <label className="label-meta flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={writeMode}
               onChange={(event) => setWriteMode(event.target.checked)}
-              className="accent-[var(--brand)]"
+              className="accent-[var(--primary)]"
             />
             write mode (requires stopped server; default read-only snapshot)
           </label>
@@ -192,7 +192,7 @@ export default function DatabaseTab({ id }: { id: string }) {
             <div className="space-y-2">
               {results.map((result, index) => (
                 <div key={index} className="rounded-lg border bg-background/60 p-3">
-                  <div className="mono-label mb-1 flex items-center gap-2">
+                  <div className="label-meta mb-1 flex items-center gap-2">
                     <Zap className="h-3 w-3" />
                     {result.ok ? `ok${result.changes ? ` · ${result.changes} changed` : ""}` : "error"}
                   </div>
@@ -298,3 +298,6 @@ function PlayersPanel({ id }: { id: string }) {
     </Card>
   );
 }
+
+
+

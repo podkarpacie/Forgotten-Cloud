@@ -124,7 +124,7 @@ export default function BackupsTab({ id }: { id: string }) {
                   <Archive className="h-4 w-4 shrink-0 text-primary/70" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-xs">{backup.file}</div>
-                    <div className="mono-label mt-0.5 flex items-center gap-2">
+                    <div className="label-meta mt-0.5 flex items-center gap-2">
                       {(backup.size / 1024).toFixed(0)} KB ·{" "}
                       {new Date(backup.createdAt).toLocaleString()}
                     </div>
@@ -165,7 +165,7 @@ export default function BackupsTab({ id }: { id: string }) {
           </h3>
           {data && (
             <>
-              <label className="mono-label flex items-center justify-between">
+              <label className="label-meta flex items-center justify-between">
                 enabled
                 <Switch
                   checked={data.autoBackup.enabled}
@@ -205,3 +205,4 @@ export default function BackupsTab({ id }: { id: string }) {
     </div>
   );
 }
+

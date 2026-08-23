@@ -37,19 +37,11 @@ export default function AacTab({ meta }: { meta: ServerMeta }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Card className="overflow-hidden">
-        <div
-          aria-hidden
-          className="h-24 w-full"
-          style={{
-            background:
-              "linear-gradient(120deg, color-mix(in oklab, var(--brand) 30%, transparent), color-mix(in oklab, var(--brand-3) 25%, transparent))",
-          }}
-        />
-        <CardHeader className="pb-0">
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Globe2 className="h-5 w-5 text-primary" /> Forgotten AAC
-            <Badge variant="secondary" className="font-mono text-[9px]">
+            <Badge variant="secondary" className="font-mono text-[10px]">
               upcoming · MyAAC-style web panel
             </Badge>
           </CardTitle>
@@ -64,7 +56,7 @@ export default function AacTab({ meta }: { meta: ServerMeta }) {
           <ol className="space-y-2 rounded-xl border border-dashed p-4">
             {state?.roadmap.map((line, index) => (
               <li key={index} className="flex gap-3 text-sm">
-                <span className="mono-label pt-1">{String(index + 1).padStart(2, "0")}</span>
+                <span className="label-meta pt-1">{String(index + 1).padStart(2, "0")}</span>
                 <span className="text-muted-foreground">{line}</span>
               </li>
             ))}
@@ -89,3 +81,4 @@ export default function AacTab({ meta }: { meta: ServerMeta }) {
     </div>
   );
 }
+

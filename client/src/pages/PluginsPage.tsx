@@ -27,7 +27,6 @@ export default function PluginsPage() {
       <PageHeading
         title="Plugins"
         subtitle="The Forgotten Engine plugin SDK is on the roadmap. This registry lights up with real packages — and per-world one-click installs — the day it ships."
-        icon={Boxes}
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {entries.map((entry, index) => (
@@ -64,3 +63,4 @@ export default function PluginsPage() {
     </div>
   );
 }
+

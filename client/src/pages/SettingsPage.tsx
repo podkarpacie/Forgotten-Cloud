@@ -21,16 +21,16 @@ import { useTheme, type ThemeAccent, type ThemeMode } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const MODES: { id: ThemeMode; label: string; icon: typeof Sun; preview: string }[] = [
-  { id: "dark", label: "Dark", icon: Moon, preview: "#1b1d2e" },
-  { id: "light", label: "Light", icon: Sun, preview: "#f4f6fb" },
-  { id: "midnight", label: "Midnight", icon: Sunrise, preview: "#171329" },
+  { id: "dark", label: "Dark", icon: Moon, preview: "#232629" },
+  { id: "light", label: "Light", icon: Sun, preview: "#f7f8f9" },
+  { id: "midnight", label: "Midnight", icon: Sunrise, preview: "#1c2029" },
 ];
 
 const ACCENTS: { id: ThemeAccent; label: string; color: string }[] = [
-  { id: "cyan", label: "Cloud Cyan", color: "#38cfe0" },
-  { id: "violet", label: "Arcane Violet", color: "#a878ff" },
-  { id: "ember", label: "Ember", color: "#f59e52" },
-  { id: "lime", label: "Tibia Lime", color: "#9fd94a" },
+  { id: "graphite", label: "Graphite", color: "#8a94a2" },
+  { id: "teal", label: "Teal", color: "#4f9aa8" },
+  { id: "plum", label: "Plum", color: "#9a6fb8" },
+  { id: "amber", label: "Amber", color: "#c99a55" },
 ];
 
 export default function SettingsPage() {
@@ -64,7 +64,6 @@ export default function SettingsPage() {
       <PageHeading
         title="Settings"
         subtitle="Appearance is remembered in a browser cookie — no accounts, fully local."
-        icon={Palette}
       />
 
       {/* Appearance */}
@@ -81,14 +80,14 @@ export default function SettingsPage() {
                   onClick={() => theme.setMode(mode.id)}
                   className={cn(
                     "rounded-xl border p-3 text-center transition-all hover:border-transparent",
-                    theme.mode === mode.id ? "brand-ring bg-card" : "bg-card/40",
+                    theme.mode === mode.id ? "border-primary/60 bg-accent" : "bg-card/40",
                   )}
                 >
                   <span
                     className="mx-auto block h-10 w-full rounded-lg border"
                     style={{ background: mode.preview }}
                   />
-                  <span className="mono-label mt-2 flex items-center justify-center gap-1.5">
+                  <span className="label-meta mt-2 flex items-center justify-center gap-1.5">
                     <mode.icon className="h-3 w-3" /> {mode.label}
                   </span>
                 </button>
@@ -107,7 +106,7 @@ export default function SettingsPage() {
                   onClick={() => theme.setAccent(accent.id)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all hover:border-transparent",
-                    theme.accent === accent.id ? "brand-ring bg-card" : "bg-card/40",
+                    theme.accent === accent.id ? "border-primary/60 bg-accent" : "bg-card/40",
                   )}
                 >
                   <span
@@ -118,7 +117,7 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-            <label className="mono-label mt-4 flex cursor-pointer items-center justify-between rounded-xl border bg-card/40 px-3 py-2.5">
+            <label className="label-meta mt-4 flex cursor-pointer items-center justify-between rounded-xl border bg-card/40 px-3 py-2.5">
               reduced motion (disable ambient animation)
               <Switch checked={!theme.motion} onCheckedChange={(checked) => theme.setMotion(!checked)} />
             </label>
@@ -180,3 +179,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+

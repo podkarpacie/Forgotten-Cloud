@@ -122,7 +122,7 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-dashed py-1 last:border-none">
-      <span className="mono-label">{label}</span>
+      <span className="label-meta">{label}</span>
       <span>{value}</span>
     </div>
   );
@@ -163,3 +163,4 @@ function formatUptime(ms: number): string {
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
   return `${seconds}s`;
 }
+

@@ -74,7 +74,6 @@ export default function CreateServer() {
       <PageHeading
         title="Create a server"
         subtitle="Provision a fresh Forgotten Engine world — the panel handles init, ports and the engine binary."
-        icon={Rocket}
       />
 
       {/* Step rail */}
@@ -85,7 +84,7 @@ export default function CreateServer() {
               onClick={() => index <= step && setStep(index)}
               className={cn(
                 "flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-all",
-                index === step && "brand-ring bg-card",
+                index === step && "border-primary/60 bg-accent",
                 index < step && "border-transparent text-muted-foreground hover:text-foreground",
                 index > step && "border-dashed text-muted-foreground/60",
               )}
@@ -143,7 +142,7 @@ export default function CreateServer() {
                           onClick={() => setTemplate(candidate)}
                           className={cn(
                             "rounded-xl border px-3 py-3 text-left transition-all hover:border-transparent",
-                            template === candidate ? "brand-ring bg-card" : "bg-card/50",
+                            template === candidate ? "border-primary/60 bg-accent" : "bg-card/50",
                           )}
                         >
                           <Sparkles className="h-4 w-4 text-primary" />
@@ -175,7 +174,7 @@ export default function CreateServer() {
                           onClick={() => setProfile(candidate.id)}
                           className={cn(
                             "rounded-xl border p-3 text-left transition-all hover:border-transparent",
-                            profile === candidate.id ? "brand-ring bg-card" : "bg-card/50",
+                            profile === candidate.id ? "border-primary/60 bg-accent" : "bg-card/50",
                           )}
                         >
                           <div className="flex items-center gap-2">
@@ -186,7 +185,7 @@ export default function CreateServer() {
                               </Badge>
                             )}
                           </div>
-                          <div className="mono-label mt-1">{candidate.reference}</div>
+                          <div className="label-meta mt-1">{candidate.reference}</div>
                         </button>
                       ))}
                     </div>
@@ -270,17 +269,17 @@ export default function CreateServer() {
               {step === 3 && (
                 <div className="space-y-4">
                   <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-xl border bg-card/40 p-4 font-mono text-sm">
-                    <dt className="mono-label pt-0.5">name</dt>
+                    <dt className="label-meta pt-0.5">name</dt>
                     <dd>{name}</dd>
-                    <dt className="mono-label pt-0.5">template</dt>
+                    <dt className="label-meta pt-0.5">template</dt>
                     <dd>{template}</dd>
-                    <dt className="mono-label pt-0.5">profile</dt>
+                    <dt className="label-meta pt-0.5">profile</dt>
                     <dd>{profile}</dd>
-                    <dt className="mono-label pt-0.5">engine</dt>
+                    <dt className="label-meta pt-0.5">engine</dt>
                     <dd>{engineVersion}</dd>
-                    <dt className="mono-label pt-0.5">otc native</dt>
+                    <dt className="label-meta pt-0.5">otc native</dt>
                     <dd>{String(enableOtcNative)}</dd>
-                    <dt className="mono-label pt-0.5">legacy login</dt>
+                    <dt className="label-meta pt-0.5">legacy login</dt>
                     <dd>{String(enableLegacyLogin)}</dd>
                   </dl>
                   {error && (
@@ -335,3 +334,5 @@ function ToggleRow({
     </label>
   );
 }
+
+

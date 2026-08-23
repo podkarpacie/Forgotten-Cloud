@@ -55,7 +55,6 @@ export default function EngineManager() {
       <PageHeading
         title="Engine & versions"
         subtitle="Forgotten Engine releases from the upstream repository — install once, reuse across worlds."
-        icon={Cpu}
         actions={
           <Button variant="secondary" onClick={refresh}>
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
@@ -76,7 +75,7 @@ export default function EngineManager() {
                     </Badge>
                   )}
                 </div>
-                <div className="mono-label mt-1">{profile.reference} · protocol {profile.protocol}</div>
+                <div className="label-meta mt-1">{profile.reference} · protocol {profile.protocol}</div>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{profile.blurb}</p>
               </CardContent>
             </Card>
@@ -103,7 +102,7 @@ export default function EngineManager() {
                   <span className="font-mono text-xs font-bold">
                     {job.kind} {job.version}
                   </span>
-                  <span className="mono-label ml-auto">{job.status}</span>
+                  <span className="label-meta ml-auto">{job.status}</span>
                 </div>
                 <div className="console-scroll mt-2 max-h-40 space-y-0.5 overflow-auto font-mono text-[11px] text-muted-foreground">
                   {job.steps.map((step, index) => (
@@ -122,7 +121,7 @@ export default function EngineManager() {
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold">Releases</h3>
             {catalog && (
-              <span className="mono-label">
+              <span className="label-meta">
                 source: {catalog.source}
                 {catalog.source === "github" && " · live"}
               </span>
@@ -137,7 +136,7 @@ export default function EngineManager() {
                   key={version.tag}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border bg-card/40 px-3 py-2 transition-all",
-                    version.installed ? "brand-ring" : "",
+                    version.installed ? "border-primary/60" : "",
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">
@@ -167,3 +166,5 @@ export default function EngineManager() {
     </div>
   );
 }
+
+

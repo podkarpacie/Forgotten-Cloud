@@ -66,16 +66,16 @@ export default function ConsoleTab({ id }: { id: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="mono-label">
+        <div className="label-meta">
           live console · {runtime ? `${runtime.status}${runtime.pid ? ` · pid ${runtime.pid}` : ""}` : "…"}
         </div>
         <div className="flex items-center gap-2">
-          <label className="mono-label flex cursor-pointer items-center gap-2">
+          <label className="label-meta flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={autoScroll}
               onChange={(event) => setAutoScroll(event.target.checked)}
-              className="accent-[var(--brand)]"
+              className="accent-[var(--primary)]"
             />
             follow
           </label>
@@ -143,3 +143,5 @@ export default function ConsoleTab({ id }: { id: string }) {
     </div>
   );
 }
+
+
