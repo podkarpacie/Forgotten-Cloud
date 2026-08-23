@@ -88,10 +88,28 @@ function writeWorldConfig(meta: ServerMeta): void {
           otclientV8LoginPacketEncryption: false,
           otclientV8ProtocolChecksum: false,
           otclientV8ChallengeOnLogin: false,
+          // The native game login refuses characters without the fixture
+          // ("native map initialization is not enabled"), so it is always on.
+          // Operator-tuned fixture values are preserved; zeros are valid and
+          // select asset-free fallbacks.
+          otclientV8NativeEmptyWorldEnabled: true,
+          otclientV8EmptyWorldGroundThingId: fixtureNumber(lua, "otclientV8EmptyWorldGroundThingId", 0),
+          otclientV8PlayerLookType: fixtureNumber(lua, "otclientV8PlayerLookType", 0),
+          otclientV8OutfitFirstLookType: fixtureNumber(lua, "otclientV8OutfitFirstLookType", 0),
+          otclientV8OutfitLastLookType: fixtureNumber(lua, "otclientV8OutfitLastLookType", 0),
+          otclientV8PlayerSpeed: fixtureNumber(lua, "otclientV8PlayerSpeed", 220),
+          otclientV8ServerBeat: fixtureNumber(lua, "otclientV8ServerBeat", 50),
         }
       : {}),
   });
   fs.writeFileSync(configPath, lua);
+}
+
+/** Reads a numeric config key, falling back when absent or malformed. */
+function fixtureNumber(lua: string, key: string, fallback: number): number {
+  const raw = extractValue(lua, key).raw;
+  const value = Number(raw);
+  return raw !== "" && Number.isFinite(value) ? value : fallback;
 }
 
 serversRouter.get("/", (req, res) => {
