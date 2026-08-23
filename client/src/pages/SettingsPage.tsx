@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Moon, Network, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
+import { HeartHandshake, Moon, Network, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeading } from "@/components/layout";
@@ -28,9 +28,11 @@ const MODES: { id: ThemeMode; label: string; icon: typeof Sun; preview: string }
 
 const ACCENTS: { id: ThemeAccent; label: string; color: string }[] = [
   { id: "graphite", label: "Graphite", color: "#8a94a2" },
-  { id: "teal", label: "Teal", color: "#4f9aa8" },
-  { id: "plum", label: "Plum", color: "#9a6fb8" },
-  { id: "amber", label: "Amber", color: "#c99a55" },
+  { id: "teal", label: "Teal", color: "#3d9db0" },
+  { id: "plum", label: "Plum", color: "#9b6cc4" },
+  { id: "amber", label: "Amber", color: "#d29a43" },
+  { id: "crimson", label: "Crimson", color: "#cf5f5f" },
+  { id: "moss", label: "Moss", color: "#7fae62" },
 ];
 
 export default function SettingsPage() {
@@ -99,18 +101,18 @@ export default function SettingsPage() {
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <Palette className="h-4 w-4 text-primary" /> Accent
             </h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {ACCENTS.map((accent) => (
                 <button
                   key={accent.id}
                   onClick={() => theme.setAccent(accent.id)}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all hover:border-transparent",
-                    theme.accent === accent.id ? "border-primary/60 bg-accent" : "bg-card/40",
+                    "flex flex-col items-center gap-2 rounded-lg border px-2 py-2.5 transition-all",
+                    theme.accent === accent.id ? "border-primary bg-[var(--tint)]" : "bg-card/40 hover:border-[var(--tint-strong)]",
                   )}
                 >
                   <span
-                    className="h-5 w-5 rounded-full border border-black/20"
+                    className="h-5 w-full rounded-full border border-black/10"
                     style={{ background: accent.color }}
                   />
                   <span className="text-xs font-medium">{accent.label}</span>
@@ -197,7 +199,81 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* About & credits */}
+      <AboutSection />
     </div>
+  );
+}
+
+const CREDITS: { name: string; detail: string; href?: string }[] = [
+  {
+    name: "Forgotten Engine",
+    detail: "The Rust server engine this panel controls — by podkarpacie & contributors.",
+    href: "https://github.com/podkarpacie/Forgotten-Engine",
+  },
+  { name: "Forgotten Cloud", detail: "Local control plane, MIT licensed.", href: "https://github.com/podkarpacie/Forgotten-Cloud" },
+  { name: "Exo 2", detail: "Interface typeface — Natanael Gama, SIL OFL." },
+  { name: "JetBrains Mono", detail: "Console typeface — JetBrains, SIL OFL." },
+  { name: "Open source stack", detail: "React · Vite · Tailwind CSS · Radix UI · Framer Motion · Express." },
+];
+
+function AboutSection() {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <Card>
+        <CardContent className="space-y-5 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+            <img
+              src="/brand/logo-horizontal.svg"
+              alt="Forgotten Cloud logo"
+              className="h-16 rounded-md border bg-[#14171b] dark:bg-transparent"
+            />
+            <div className="flex items-center gap-2">
+              {[ "/brand/logo-mark.svg", "/brand/logo-stacked.svg", "/brand/app-icon.svg"].map((asset) => (
+                <img
+                  key={asset}
+                  src={asset}
+                  alt=""
+                  className="h-11 rounded-md border bg-[#14171b] p-1.5"
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <HeartHandshake className="h-4 w-4 text-primary" /> Credits
+            </h3>
+            <ul className="divide-y rounded-lg border">
+              {CREDITS.map((credit) => (
+                <li key={credit.name} className="flex flex-wrap items-baseline gap-x-3 px-3 py-2">
+                  {credit.href ? (
+                    <a
+                      href={credit.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[13px] font-medium underline-offset-4 hover:text-primary hover:underline"
+                    >
+                      {credit.name}
+                    </a>
+                  ) : (
+                    <span className="text-[13px] font-medium">{credit.name}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">{credit.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Forgotten Cloud v2.2 · runs entirely on your machine · no telemetry, no accounts.
+            Not affiliated with CipSoft; no official client assets are distributed. Engine capability
+            grows with upstream releases — the panel keeps pace automatically.
+          </p>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 

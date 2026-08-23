@@ -1,10 +1,5 @@
-import {
-  Boxes,
-  Cpu,
-  LayoutDashboard,
-  Palette,
-  Plus,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Boxes, Cpu, LayoutDashboard, Palette, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { BrandHeader } from "./brand";
@@ -36,9 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link key={item.href} href={item.href}>
                   <a
                     className={cn(
-                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors",
                       active
-                        ? "bg-accent font-semibold text-foreground"
+                        ? "nav-active"
                         : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                     )}
                   >
@@ -54,16 +49,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link href="/settings">
               <a
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors",
                   location.startsWith("/settings")
-                    ? "bg-accent font-semibold text-foreground"
+                    ? "nav-active"
                     : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                 )}
               >
                 <Palette className="h-[15px] w-[15px]" /> Appearance
               </a>
             </Link>
-            <div className="label-meta px-3 pb-1 pt-3 text-[9px]">v2.1 · local edition</div>
+            <div className="label-meta px-3 pb-1 pt-3 text-[9px]">v2.2 · local edition · MIT</div>
           </div>
         </aside>
 
@@ -82,7 +77,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <main className="min-h-screen flex-1 px-4 pb-16 pt-20 md:px-10 md:pt-9">{children}</main>
+        <main className="min-h-screen flex-1 px-4 pb-16 pt-20 md:px-10 md:pt-9">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export const CONFIG_SCHEMA: {
   { key: "mapName", group: "World", type: "string", default: '"forgotten"', label: "Map name" },
   { key: "mapFormat", group: "World", type: "string", default: '"auto"', label: "Map format", hint: "auto, femap, or otbm.", advanced: true },
   { key: "feProfile", group: "World", type: "string", default: '"fe-7.4"', label: "Compatibility profile", hint: "fe-7.4, fe-8.0, or fe-1.2." },
-  { key: "tibiaProtocol", group: "World", type: "number", default: "740", label: "Tibia protocol", advanced: true },
+  { key: "tibiaProtocol", group: "World", type: "string", default: '"7.4"', label: "Tibia protocol", hint: "Quoted string: 7.4, 8.0, or 10.98 - must match the selected profile.", advanced: true },
 
   { key: "rateExp", group: "Rates", type: "number", default: "1", label: "Experience rate" },
   { key: "rateSkill", group: "Rates", type: "number", default: "1", label: "Skill rate" },
@@ -52,7 +52,7 @@ export const CONFIG_SCHEMA: {
   },
   { key: "otclientV8LoginPort", group: "OTClientV8 native", type: "number", default: "7174", label: "OTC login port" },
   { key: "otclientV8GamePort", group: "OTClientV8 native", type: "number", default: "7175", label: "OTC game port" },
-  { key: "otclientV8ProtocolVersion", group: "OTClientV8 native", type: "number", default: "0", label: "OTC protocol version", advanced: true },
+  { key: "otclientV8ProtocolVersion", group: "OTClientV8 native", type: "number", default: "740", label: "OTC protocol version", hint: "740 is the only runnable native path; 800 needs unimplemented RSA/XTEA.", advanced: true },
   { key: "advertisedOtClientV8Host", group: "OTClientV8 native", type: "string", default: '"127.0.0.1"', label: "Advertised OTC host", advanced: true },
   { key: "advertisedOtClientV8GamePort", group: "OTClientV8 native", type: "number", default: "7175", label: "Advertised OTC game port", advanced: true },
   { key: "otclientV8NumericAccountIds", group: "OTClientV8 native", type: "boolean", default: "true", label: "Numeric account IDs", advanced: true },

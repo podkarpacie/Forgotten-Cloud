@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import {
   Clock,
   Cpu,
@@ -6,13 +7,12 @@ import {
   Rocket,
   Server as ServerIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { PageHeading, StatusDot } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 interface OverviewResponse {
   servers: {
@@ -39,21 +39,45 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }
 
+/** Smoothly counts a numeric value up/down when it changes. */
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value);
+  const previous = useRef(value);
+
+  useEffect(() => {
+    const start = previous.current;
+    const delta = value - start;
+    if (delta === 0) return;
+    previous.current = value;
+    const duration = 420;
+    const t0 = performance.now();
+    let frame: number;
+    const tick = (now: number) => {
+      const progress = Math.min((now - t0) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(start + delta * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  return <>{display}</>;
+}
+
 export default function Dashboard() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
-    apiGet<OverviewResponse>("/overview")
-      .then(setOverview)
-      .catch((cause) => setError(String(cause)));
-  }, []);
-
   useEffect(() => {
+    const refresh = () =>
+      apiGet<OverviewResponse>("/overview")
+        .then(setOverview)
+        .catch((cause) => setError(String(cause)));
     refresh();
     const timer = setInterval(refresh, 5000);
     return () => clearInterval(timer);
-  }, [refresh]);
+  }, []);
 
   const servers = overview?.servers ?? [];
 
@@ -73,12 +97,18 @@ export default function Dashboard() {
 
       {/* Stat strip */}
       <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
-        <Stat label="worlds" value={servers.length} icon={ServerIcon} />
-        <Stat label="running" value={overview?.runningCount ?? 0} icon={Rocket} />
+        <Stat label="worlds" icon={ServerIcon}>
+          <AnimatedNumber value={servers.length} />
+        </Stat>
+        <Stat label="running" icon={Rocket} accent>
+          <AnimatedNumber value={overview?.runningCount ?? 0} />
+        </Stat>
         <Stat
           label="disk used"
-          value={formatBytes(servers.reduce((total, server) => total + server.diskUsageBytes, 0))}
           icon={HardDrive}
+          value={
+            formatBytes(servers.reduce((total, server) => total + server.diskUsageBytes, 0)) || "0 B"
+          }
         />
         <Stat label="profiles" value="3" icon={Cpu} />
       </div>
@@ -108,31 +138,38 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {servers.map((server) => (
-            <Link key={server.id} href={`/servers/${server.id}`}>
-              <a className="block h-full rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                <div className="panel group h-full p-5 transition-colors hover:border-[color-mix(in_oklab,var(--foreground)_22%,transparent)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-[15px] font-semibold leading-snug group-hover:text-primary">
-                        {server.name}
-                      </h3>
-                      <div className="label-meta mt-1 truncate">
-                        {server.engineVersion} · {server.profile}
+          {servers.map((server, index) => (
+            <motion.div
+              key={server.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.28, ease: "easeOut" }}
+            >
+              <Link href={`/servers/${server.id}`}>
+                <a className="block h-full rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                  <div className="panel hover-lift group h-full p-5 cursor-pointer">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-[15px] font-semibold leading-snug transition-colors group-hover:text-primary">
+                          {server.name}
+                        </h3>
+                        <div className="label-meta mt-1 truncate">
+                          {server.engineVersion} · {server.profile}
+                        </div>
                       </div>
+                      <StatusDot status={server.status} />
                     </div>
-                    <StatusDot status={server.status} />
+                    <div className="mt-5 flex items-center gap-4 border-t pt-3 text-[11px] text-muted-foreground">
+                      <span>{formatBytes(server.diskUsageBytes)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(server.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-5 flex items-center gap-4 border-t pt-3 text-[11px] text-muted-foreground">
-                    <span>{formatBytes(server.diskUsageBytes)}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {new Date(server.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </a>
-            </Link>
+                </a>
+              </Link>
+            </motion.div>
           ))}
         </div>
       )}
@@ -147,20 +184,26 @@ export default function Dashboard() {
 
 function Stat({
   label,
-  value,
   icon: Icon,
+  children,
+  value,
+  accent,
 }: {
   label: string;
-  value: string | number;
   icon: typeof Rocket;
+  children?: React.ReactNode;
+  value?: string;
+  accent?: boolean;
 }) {
   return (
-    <div className="bg-card px-4 py-3.5">
+    <div className="relative bg-card px-4 py-3.5">
+      {accent && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-primary/70" />}
       <div className="label-meta flex items-center gap-1.5">
         <Icon className="h-3 w-3" /> {label}
       </div>
-      <div className="mt-1 font-mono text-lg font-semibold tracking-tight">{value}</div>
+      <div className="mt-1 font-mono text-lg font-semibold tracking-tight tabular-nums">
+        {children ?? value}
+      </div>
     </div>
   );
 }
-

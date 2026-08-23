@@ -9,7 +9,7 @@ import {
 } from "react";
 
 export type ThemeMode = "dark" | "light" | "midnight";
-export type ThemeAccent = "graphite" | "teal" | "plum" | "amber";
+export type ThemeAccent = "graphite" | "teal" | "plum" | "amber" | "crimson" | "moss";
 
 interface ThemeState {
   mode: ThemeMode;

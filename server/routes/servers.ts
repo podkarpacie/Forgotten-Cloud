@@ -39,6 +39,13 @@ export async function allocateFreePorts(enableSession: boolean, enableOtc: boole
   throw httpError(500, "unable to allocate free port block");
 }
 
+/** Engine-verified protocol strings per compatibility profile (quoted in config.lua). */
+const PROFILE_PROTOCOL: Record<ProfileId, string> = {
+  "fe-7.4": "7.4",
+  "fe-8.0": "8.0",
+  "fe-1.2": "10.98",
+};
+
 function writeWorldConfig(meta: ServerMeta): void {
   const configPath = path.join(serverWorld(meta.id), "config.lua");
   let lua = fs.existsSync(configPath)
@@ -51,8 +58,7 @@ function writeWorldConfig(meta: ServerMeta): void {
     gameProtocolPort: meta.ports.game,
     serverName: meta.name,
     feProfile: meta.profile,
-    tibiaProtocol:
-      meta.profile === "fe-7.4" ? 740 : meta.profile === "fe-8.0" ? 800 : 1098,
+    tibiaProtocol: PROFILE_PROTOCOL[meta.profile],
     legacyLoginEnabled: extractValue(lua, "legacyLoginEnabled").raw === "true",
     ...(meta.ports.session
       ? {
@@ -64,11 +70,18 @@ function writeWorldConfig(meta: ServerMeta): void {
       : {}),
     ...(meta.ports.otcLogin && meta.ports.otcGame
       ? {
+          // The engine only accepts the plain classic 740 native foundation:
+          // protocol 740, numeric accounts, no encryption/checksum/challenge.
           otclientV8NativeEnabled: true,
           otclientV8LoginPort: meta.ports.otcLogin,
           otclientV8GamePort: meta.ports.otcGame,
           advertisedOtClientV8Host: "127.0.0.1",
           advertisedOtClientV8GamePort: meta.ports.otcGame,
+          otclientV8ProtocolVersion: 740,
+          otclientV8NumericAccountIds: true,
+          otclientV8LoginPacketEncryption: false,
+          otclientV8ProtocolChecksum: false,
+          otclientV8ChallengeOnLogin: false,
         }
       : {}),
   });
@@ -264,6 +277,26 @@ serversRouter.post("/:id/start", async (req, res, next) => {
       const jobId = startInstall(meta.engineVersion, "install");
       throw httpError(409, `engine ${meta.engineVersion} is not installed yet; install job ${jobId} queued`);
     }
+
+    // Resync the panel-owned config keys so the engine always receives a
+    // valid document (protocol strings, native-path switches, ports).
+    writeWorldConfig(meta);
+
+    // Legacy login requires the 1024-bit RSA key; generate it on first use.
+    const worldDir = serverWorld(meta.id);
+    const lua = fs.readFileSync(path.join(worldDir, "config.lua"), "utf-8");
+    if (extractValue(lua, "legacyLoginEnabled").raw === "true") {
+      const rawKey = extractValue(lua, "rsaPrivateKey").raw.replace(/^"|"$/g, "");
+      const keyPath = path.resolve(worldDir, rawKey || "key.pem");
+      if (!fs.existsSync(keyPath)) {
+        supervisor.pushSystemLine(meta.id, "legacy login enabled but RSA key missing — running generate-key");
+        const result = await run(bin, ["generate-key", worldDir], { timeoutMs: 60_000 });
+        if (result.code !== 0) {
+          throw httpError(502, `generate-key failed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`);
+        }
+      }
+    }
+
     await supervisor.startServer(meta.id, bin);
     res.json(supervisor.getRuntimeSnapshot(meta.id));
   } catch (error) {
