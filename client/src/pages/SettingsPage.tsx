@@ -1,0 +1,182 @@
+import { motion } from "framer-motion";
+import { Moon, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { PageHeading } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { apiGet, apiSend } from "@/lib/api";
+import type { PanelSettings } from "@/lib/types";
+import { useTheme, type ThemeAccent, type ThemeMode } from "@/lib/theme";
+import { cn } from "@/lib/utils";
+
+const MODES: { id: ThemeMode; label: string; icon: typeof Sun; preview: string }[] = [
+  { id: "dark", label: "Dark", icon: Moon, preview: "#1b1d2e" },
+  { id: "light", label: "Light", icon: Sun, preview: "#f4f6fb" },
+  { id: "midnight", label: "Midnight", icon: Sunrise, preview: "#171329" },
+];
+
+const ACCENTS: { id: ThemeAccent; label: string; color: string }[] = [
+  { id: "cyan", label: "Cloud Cyan", color: "#38cfe0" },
+  { id: "violet", label: "Arcane Violet", color: "#a878ff" },
+  { id: "ember", label: "Ember", color: "#f59e52" },
+  { id: "lime", label: "Tibia Lime", color: "#9fd94a" },
+];
+
+export default function SettingsPage() {
+  const theme = useTheme();
+  const [settings, setSettings] = useState<PanelSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiGet<PanelSettings>("/settings").then(setSettings);
+  }, []);
+
+  async function save() {
+    if (!settings) return;
+    setSaving(true);
+    try {
+      setSettings(await apiSend<PanelSettings>("/settings", "PUT", settings));
+      toast.success("Panel settings saved");
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function update<K extends keyof PanelSettings>(key: K, value: PanelSettings[K]) {
+    setSettings((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeading
+        title="Settings"
+        subtitle="Appearance is remembered in a browser cookie — no accounts, fully local."
+        icon={Palette}
+      />
+
+      {/* Appearance */}
+      <Card>
+        <CardContent className="grid gap-8 pt-5 lg:grid-cols-2">
+          <section>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Moon className="h-4 w-4 text-primary" /> Mode
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              {MODES.map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => theme.setMode(mode.id)}
+                  className={cn(
+                    "rounded-xl border p-3 text-center transition-all hover:border-transparent",
+                    theme.mode === mode.id ? "brand-ring bg-card" : "bg-card/40",
+                  )}
+                >
+                  <span
+                    className="mx-auto block h-10 w-full rounded-lg border"
+                    style={{ background: mode.preview }}
+                  />
+                  <span className="mono-label mt-2 flex items-center justify-center gap-1.5">
+                    <mode.icon className="h-3 w-3" /> {mode.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Palette className="h-4 w-4 text-primary" /> Accent
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              {ACCENTS.map((accent) => (
+                <button
+                  key={accent.id}
+                  onClick={() => theme.setAccent(accent.id)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all hover:border-transparent",
+                    theme.accent === accent.id ? "brand-ring bg-card" : "bg-card/40",
+                  )}
+                >
+                  <span
+                    className="h-5 w-5 rounded-full border border-black/20"
+                    style={{ background: accent.color }}
+                  />
+                  <span className="text-xs font-medium">{accent.label}</span>
+                </button>
+              ))}
+            </div>
+            <label className="mono-label mt-4 flex cursor-pointer items-center justify-between rounded-xl border bg-card/40 px-3 py-2.5">
+              reduced motion (disable ambient animation)
+              <Switch checked={!theme.motion} onCheckedChange={(checked) => theme.setMotion(!checked)} />
+            </label>
+          </section>
+        </CardContent>
+      </Card>
+
+      {/* Engine source */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
+          <CardContent className="space-y-4 pt-5">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Settings2 className="h-4 w-4 text-primary" /> Engine acquisition
+            </h3>
+            {!settings ? (
+              <p className="text-sm text-muted-foreground">loading…</p>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>GitHub owner</Label>
+                    <Input value={settings.repoOwner} onChange={(event) => update("repoOwner", event.target.value)} className="mt-1.5 font-mono" />
+                  </div>
+                  <div>
+                    <Label>Repository</Label>
+                    <Input value={settings.repoName} onChange={(event) => update("repoName", event.target.value)} className="mt-1.5 font-mono" />
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Preferred install method</Label>
+                    <Select value={settings.preferredMethod} onValueChange={(value) => update("preferredMethod", value as PanelSettings["preferredMethod"])}>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (release → build → local)</SelectItem>
+                        <SelectItem value="release">Release assets only</SelectItem>
+                        <SelectItem value="source">Build from source only</SelectItem>
+                        <SelectItem value="local">Local binary copy only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Engine source checkout (optional)</Label>
+                    <Input value={settings.engineSourcePath} placeholder="path to Forgotten-Engine repo with Cargo.toml" onChange={(event) => update("engineSourcePath", event.target.value)} className="mt-1.5 font-mono text-xs" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Local prebuilt binary (optional override)</Label>
+                  <Input value={settings.localEngineBinary} placeholder="…\target\release\forgotten-engine.exe" onChange={(event) => update("localEngineBinary", event.target.value)} className="mt-1.5 font-mono text-xs" />
+                </div>
+                <Button onClick={() => void save()} disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" /> Save engine settings
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}

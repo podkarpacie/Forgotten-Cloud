@@ -1,32 +1,58 @@
-# Forgotten Cloud Architecture
+# Forgotten Cloud Architecture (v2 — Local Edition)
 
 ## Product boundary
 
-Forgotten Cloud is a role-aware management panel for Forgotten Engine instances. The first release implements persistent server definitions, lifecycle orchestration records, collaboration controls, profile and backup metadata, plugin compatibility rules, and opt-in discovery. The actual execution of remote game processes is intentionally isolated behind a future host-agent API; a web-panel deployment must not attempt to run arbitrary long-lived game-server child processes.
+Forgotten Cloud is a **single-user, localhost-only control plane** for Forgotten Engine worlds. It deliberately runs game-server child processes (this is a local operator tool, not multi-tenant cloud infrastructure) but binds strictly to `127.0.0.1` and rejects non-loopback requests at middleware level. There is no authentication surface by design.
 
 ## Domain model
 
-| Model | Key fields | Responsibility |
+Panel state lives in plain JSON + the filesystem; no external database is required for the panel itself:
+
+| Store | Location | Responsibility |
 |---|---|---|
-| `servers` | owner ID, name, Tibia 8.0, template, rate, PvP, database mode, desired/observed status | Authoritative server definition and requested lifecycle state. |
-| `server_metrics` | server ID, players, CPU, RAM, uptime, address, captured time | Last reported host-agent telemetry. |
-| `server_events` | server ID, kind, level, message, actor ID, created time | Append-only lifecycle, command, and console audit trail. |
-| `server_members` | server ID, user ID, role | Collaboration membership using owner, developer, moderator, mapper, or GM. |
-| `member_permissions` | membership ID, exact permission key, enabled | Explicit console, players, plugins, scripts, database, backups, and settings authority. |
-| `plugins` / `plugin_installs` | engine compatibility range, install state | Catalog metadata and instance-specific installation state. |
-| `backups` | manifest, restoration state, origin | Database, player, map, config, plugin, and script coverage. |
-| `server_profiles` | server snapshot payload, engine/map/schema versions | Reusable profile/clone definition. |
-| `public_listings` | server ID, enabled, summary | Owner opt-in record for public discovery. |
+| `settings.json` | `.cloud/` | Repo coordinates, preferred acquisition method, source paths. |
+| `server.json` | `.cloud/servers/<id>/.fc/` | Per-world identity: name, profile, pinned engine tag, allocated ports, autobackup policy, plugin enable-state, AAC flag. |
+| World directory | `.cloud/servers/<id>/` | The genuine Forgotten Engine world (`config.lua`, `data/`, SQLite database). The panel treats it as source of truth. |
+| Engine cache | `.cloud/engine/<tag>/bin/` | Installed binaries shared across worlds. |
+
+## Supervisor design
+
+One supervised child process per running world:
+
+- spawn: `<engine-bin> run <world-dir>` with cwd = world dir
+- stdout/stderr → ring buffer (2000 lines) → SSE fan-out + append-only run log
+- stop: graceful `taskkill` then tree-kill fallback (Windows); SIGTERM elsewhere
+- crash semantics: immediate-exit spawns surface as HTTP 502 so the UI never claims a false "running"
+
+Console commands: `/clear` and `/broadcast <msg>` are panel-side; anything else is forwarded to engine stdin (future-proofing for interactive CLIs).
+
+## Engine acquisition chain
+
+`release → source-build → local-copy`, ordered automatically or forced in settings. Source builds reuse a configured checkout when present, else shallow-clone the exact tag. Jobs stream step logs through an idempotent polling endpoint (`/api/jobs/:id`) rather than websockets for simplicity.
+
+## Config writer contract
+
+`config.lua` is rewritten **in place**: recognized assignment lines are regex-replaced preserving indentation; everything else (comments, blank lines, unknown keys, the optional `experienceStages` literal table) survives byte-for-byte. Missing keys append under a managed marker. This mirrors the bounded parser subset in `forgotten-config`.
 
 ## Security model
 
-Every mutation checks either ownership or an enabled, explicit permission. Server role names are represented exactly as **owner**, **developer**, **moderator**, **mapper**, and **GM**. Permission keys are represented exactly as **console**, **players**, **plugins**, **scripts**, **database**, **backups**, and **settings**. The client never decides authorization; it merely reflects server decisions.
+- Loopback bind + explicit remote-address rejection middleware
+- Path traversal guard on every file operation (`safeJoin`)
+- Write-mode SQL requires a stopped server; default connections are `readOnly`
+- Backup filenames validated against `^[\w.-]+\.zip$`
+- Plugin registry contains only truthful metadata; unavailable packages refuse installation with an explicit SDK-pending message
 
-## Product constraints
+## Frontend
 
-The creation wizard exposes **only Tibia 8.0**. Template labels are exactly **Global 8.0**, **High Rate**, **Hardcore**, and **Empty World**. Storage choice offers a default **automatic SQLite** path and an **advanced PostgreSQL/MySQL** path. Plugin entries have compatibility metadata and install records but no invented ratings, reviews, or download totals; those must originate from real registry data.
+React 19 + Vite + Tailwind v4 + framer-motion. Theme = `{mode, accent, motion}` persisted in a `fc_theme` cookie (1 year). Modes set semantic CSS variable palettes; accents set `--brand*` gradient stops consumed by both Tailwind theme mapping and inline SVG brand assets.
 
-## Testable acceptance criteria
+Routes: `/` dashboard · `/create` wizard · `/engine` versions · `/plugins` registry · `/settings` appearance+acquisition · `/servers/:id/:tab?` with tabs overview/console/files/config/database/backups/plugins/aac.
 
-The release must prove the creation constraints, role and permission checks, lifecycle transitions, command audit events, backup restore state validation, plugin compatibility checks, profile cloning, and public-listing opt-in with automated tests. The user interface presents those capabilities in a responsive blueprint-inspired design: white technical grid, high-contrast black typography, monospaced labels, and restrained cyan/pink wireframes.
+## Acceptance checks (verified)
 
+- Create → `forgotten-engine init` runs when binary present; skeleton fallback otherwise
+- Start/stop lifecycle with PID/uptime reporting; console SSE delivers live lines
+- Config edits persist to `config.lua` without corrupting unrelated content
+- Backup → restore roundtrip preserves world content and drops archive metadata files
+- Export zip downloads; import zip creates a new server with a fresh port block
+- Database browser lists engine tables (accounts/players/engine_events/…) from a real SQLite file

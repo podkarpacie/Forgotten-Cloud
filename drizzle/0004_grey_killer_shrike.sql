@@ -1,1 +1,0 @@
-ALTER TABLE `server_backups` ADD `restore_reconciliation` text;

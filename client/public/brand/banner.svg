@@ -1,0 +1,49 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg-glow" cx="50%" cy="0%" r="90%">
+      <stop offset="0" stop-color="#312e81" stop-opacity="0.85"/>
+      <stop offset="0.5" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="grid-l" x1="0" y1="0" x2="0" y2="400">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="b-mark" x1="140" y1="110" x2="260" y2="290" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.55" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#e879f9"/>
+    </linearGradient>
+    <linearGradient id="b-word" x1="320" y1="150" x2="900" y2="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset="0.5" stop-color="#a5b4fc"/>
+      <stop offset="1" stop-color="#f0abfc"/>
+    </linearGradient>
+    <pattern id="p-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0v40" fill="none" stroke="url(#grid-l)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="400" rx="24" fill="url(#bg-glow)"/>
+  <rect width="1200" height="400" rx="24" fill="url(#p-grid)"/>
+
+  <!-- Mark -->
+  <g transform="translate(130 130)">
+    <path d="M70 5 133 41v72L70 149 7 113V41L70 5Z" fill="url(#b-mark)"/>
+    <path d="M70 17 122 47v60L70 137 18 107V47L70 17Z" fill="#0f172a"/>
+    <path d="M51 92a15.5 15.5 0 0 1-2.2-30.9A22.7 22.7 0 0 1 93 55.6a17.4 17.4 0 0 1-2.4 36.4H51Z" fill="url(#b-mark)" stroke="#0b1120" stroke-width="3"/>
+    <circle cx="97" cy="37" r="5.4" fill="#e879f9"/>
+    <path d="M42 107h56" stroke="url(#b-mark)" stroke-width="5.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="330" y="196" font-family="'Segoe UI', Inter, system-ui, sans-serif" font-size="88" font-weight="800" letter-spacing="3" fill="url(#b-word)">FORGOTTEN CLOUD</text>
+  <text x="334" y="248" font-family="'Consolas', 'Courier New', monospace" font-size="26" font-weight="500" letter-spacing="7" fill="#7dd3fc">LOCAL CONTROL PLANE // FORGOTTEN ENGINE</text>
+
+  <g font-family="'Consolas', 'Courier New', monospace" font-size="20" fill="#64748b">
+    <text x="334" y="306">fe-7.4</text><text x="450" y="306">fe-8.0</text><text x="566" y="306">fe-1.2</text>
+  </g>
+  <g stroke="#334155" stroke-width="2">
+    <line x1="430" y1="299" x2="442" y2="299"/><line x1="546" y1="299" x2="558" y2="299"/>
+  </g>
+</svg>

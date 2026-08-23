@@ -1,51 +1,59 @@
+<p align="center">
+  <img src="client/public/brand/banner.svg" alt="Forgotten Cloud" width="100%" />
+</p>
+
 # Forgotten Cloud
 
-Forgotten Cloud is a technical, role-aware control plane for **Forgotten Engine** instances. It provides a deliberate separation between a web management surface and the privileged host software that actually supervises server processes, files, and backups.
+**A local, Aternos-style control panel for [Forgotten Engine](https://github.com/podkarpacie/Forgotten-Engine) worlds.**
+No accounts. No registration. Runs on your machine — open `http://127.0.0.1:4870` and manage everything from the browser.
 
-> The dashboard is a control plane, not a game-server container. It does not start untrusted server processes inside the web runtime. A Forgotten Host Agent must be installed on an approved server node to confirm lifecycle state, send telemetry and console events, preserve backups, and complete restores.
+## What it does
 
-## Included first-release workflows
-
-| Area | Implemented behavior |
+| Area | Features |
 |---|---|
-| Server creation | User-scoped creation wizard constrained to **Tibia 8.0**, with **Global 8.0**, **High Rate**, **Hardcore**, and **Empty World** templates. |
-| Database choice | A default **automatic SQLite** route plus advanced **PostgreSQL** or **MySQL** deployment intent. |
-| Lifecycle | Authorized start, stop, and restart requests create auditable desired-state commands; an agent reports observed state. |
-| Telemetry | One agent per server may publish status, address, live player count, uptime, CPU, RAM, and console/lifecycle events. |
-| Console | Console events use an authenticated server-sent event channel; command requests are persisted for agent execution. |
-| Team authority | Exact roles are `owner`, `developer`, `moderator`, `mapper`, and `GM`. Exact permission keys are `console`, `players`, `plugins`, `scripts`, `database`, `backups`, and `settings`. |
-| Plugins | Searchable registry metadata with version compatibility checks and per-server install/uninstall records. No fabricated reviews, ratings, or download totals are shown. |
-| Backups | Manual and scheduled backup records include database, player data, map, config, plugins, and scripts; restore requests are confirmed by an agent. |
-| Profiles & discovery | Full-profile capture/clone metadata and owner-controlled public discovery opt-in. |
+| **Server creation** | Wizard: name → compatibility profile (`fe-7.4`, `fe-8.0`, `fe-1.2`) → engine release tag → options. Provisions the world via `forgotten-engine init` (panel-side skeleton fallback), auto-allocates a free port block per world. |
+| **Engine manager** | Fetches `fe-v*` tags from GitHub (cached, offline fallback list). Installs the matching binary: release asset download → `cargo build --release` from source → local binary copy. Install jobs stream progress. |
+| **Lifecycle** | Start / stop / restart with real PID + uptime; immediate-crash detection surfaces engine errors instead of faking success. |
+| **Console** | Live SSE stream, persisted run logs under `.fc/logs/`, `/broadcast` and `/clear` panel commands, stdin forwarding. |
+| **Files** | Full explorer: browse, edit (with Ctrl+S), create, rename, delete, upload, download — guarded against path escapes. |
+| **Config manager** | Form-based editing of every recognized `config.lua` key with comments preserved byte-for-byte on save. |
+| **Database** | Browse tables/rows of `data/forgotten-engine.db` (node:sqlite), read-only SQL console by default, write mode gated to stopped servers, CSV/JSON export, plus account/player actions bridged through the engine CLI. |
+| **Backups** | Manual + scheduled zips (retention policy), pre-restore safety snapshots, restore in one click. |
+| **Export / Import** | Download the entire world as a zip; import any world zip as a new server with fresh ports. |
+| **Plugins** | Registry + `data/plugins/<id>/manifest.json` detection and per-world toggles — ready to light up the moment the Forgotten Engine plugin SDK ships. No fabricated ratings or stats. |
+| **Forgotten AAC** | Reserved `aac/` workspace per world for the upcoming MyAAC-style web panel. |
+| **Appearance** | Dark / Light / Midnight modes × 4 accent themes, ambient animations (reducible), remembered via cookies. Fully local preferences. |
 
-## Host-agent protocol
-
-An owner issues one credential per server through `agents.issueCredential`. The raw token is displayed once and must be stored only on the trusted host node. Cloud stores only a SHA-256 hash. The agent then authenticates as `Authorization: Bearer <token>`.
-
-| Endpoint | Agent responsibility |
-|---|---|
-| `POST /api/agent/telemetry` | Report observed lifecycle state, address, player count, uptime, CPU, RAM, and up to 50 append-only console events. |
-| `POST /api/agent/restore` | Acknowledge a requested restore with success/failure and a durable message after artifact reconciliation. |
-| `GET /api/servers/:serverId/events` | Authenticated browser subscribers receive live console/audit events over server-sent events. |
-
-The initial agent contract intentionally treats server commands and restore jobs as **requested** until a trusted host confirms the observed result. This prevents the UI from claiming that a remote operation succeeded before it has.
-
-## Automatic backups
-
-Automatic backups are scheduled through the managed HTTP scheduling service; no in-process timer is used. A per-server task identifier is persisted on the server record, and the authenticated callback resolves the server by that identifier rather than a request payload. The first schedule configuration must happen after a deployed release is available because callbacks target the production service.
-
-## Development
+## Quick start
 
 ```bash
 pnpm install
-pnpm drizzle-kit generate
-pnpm check
-pnpm test
-pnpm build
+pnpm dev          # API on 127.0.0.1:4870 + Vite dev server on 5173
 ```
 
-Database changes are represented in `drizzle/` and applied through the managed database migration workflow. Do not place raw backup archives, maps, or server binaries in this repository; agent-controlled artifacts belong in managed object storage with metadata in the database.
+Production:
 
-## Validation
+```bash
+pnpm build
+pnpm start        # serves UI + API on http://127.0.0.1:4870
+```
 
-The release checks TypeScript, builds the production bundle, and runs Vitest coverage for constraints, lifecycle gates, cron validation, plugin compatibility, backup manifests, authentication, and sensitive router authorization paths. A true end-to-end production test additionally needs a deployed Cloud instance, an installed host agent, and a non-production Forgotten Engine server node.
+Point **Settings → Engine source checkout** at your Forgotten Engine clone to build binaries locally, or set an explicit prebuilt binary path.
+
+## Honest status
+
+Forgotten Engine itself is ~48% complete (~24% production-ready). Where the engine hasn't shipped yet — full Lua scripting, official-client sessions, AAC bundle — Forgotten Cloud provides working scaffolds and truthful messaging rather than fake buttons. Everything that *is* implemented upstream (init/run/validate lifecycle, config subset, SQLite persistence, backup primitives, OTClientV8 native path) is fully operable through this panel.
+
+## Repository layout
+
+```
+server/            Express host, supervisor, installer, config writer
+  routes/          servers · files · database · backups · system
+  engine/          catalog (tags) · installer (release/build/local) · supervisor
+client/src/
+  pages/           dashboard · wizard · engine · plugins · settings · server tabs
+  components/ui/   shadcn-style kit (trimmed)
+  lib/theme.tsx    cookie-persisted theme engine
+```
+
+MIT licensed. Not affiliated with CipSoft; no official client assets are distributed.
