@@ -29,6 +29,7 @@ systemRouter.put("/settings", (req, res) => {
     preferredMethod: body.preferredMethod ?? current.preferredMethod,
     maxBackupsPerServer: Math.min(Math.max(Number(body.maxBackupsPerServer ?? 25), 1), 200),
     consoleHistoryLines: Math.min(Math.max(Number(body.consoleHistoryLines ?? 2000), 200), 5000),
+    networkAccess: body.networkAccess === "loopback" ? "loopback" : body.networkAccess === "lan" ? "lan" : current.networkAccess,
   });
   res.json(loadSettings());
 });

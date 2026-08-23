@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Moon, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
+import { Moon, Network, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeading } from "@/components/layout";
@@ -168,8 +168,29 @@ export default function SettingsPage() {
                   <Label>Local prebuilt binary (optional override)</Label>
                   <Input value={settings.localEngineBinary} placeholder="…\target\release\forgotten-engine.exe" onChange={(event) => update("localEngineBinary", event.target.value)} className="mt-1.5 font-mono text-xs" />
                 </div>
+
+                <div className="border-t pt-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <Network className="h-4 w-4 text-primary" /> Network access
+                  </h3>
+                  <div className="mt-3 max-w-md">
+                    <Label>Who can reach this panel</Label>
+                    <Select value={settings.networkAccess} onValueChange={(value) => update("networkAccess", value as PanelSettings["networkAccess"])}>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lan">This machine + local network</SelectItem>
+                        <SelectItem value="loopback">This machine only (127.0.0.1)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      Takes effect after restarting the panel. There is no login by design — anyone
+                      on the network can manage servers, so share only with machines you trust.
+                    </p>
+                  </div>
+                </div>
+
                 <Button onClick={() => void save()} disabled={saving}>
-                  <Save className="mr-2 h-4 w-4" /> Save engine settings
+                  <Save className="mr-2 h-4 w-4" /> Save settings
                 </Button>
               </>
             )}

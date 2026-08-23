@@ -97,4 +97,5 @@ export interface PanelSettings {
   preferredMethod: "auto" | "release" | "source" | "local";
   maxBackupsPerServer: number;
   consoleHistoryLines: number;
+  networkAccess: "loopback" | "lan";
 }

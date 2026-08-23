@@ -65,6 +65,7 @@ export interface PanelSettings {
   maxBackupsPerServer: number;
   localEngineBinary: string;
   consoleHistoryLines: number;
+  networkAccess: "loopback" | "lan";
 }
 
 export const DEFAULT_SETTINGS: PanelSettings = {
@@ -75,6 +76,7 @@ export const DEFAULT_SETTINGS: PanelSettings = {
   maxBackupsPerServer: 25,
   localEngineBinary: "",
   consoleHistoryLines: 2000,
+  networkAccess: "lan",
 };
 
 export interface ConsoleLine {
