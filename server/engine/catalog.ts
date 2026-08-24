@@ -54,11 +54,13 @@ function writeTagCache(tags: string[]): void {
 async function fetchGithubTags(): Promise<string[] | null> {
   const settings = loadSettings();
   const url = `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName}/tags?per_page=100`;
+  const headers: Record<string, string> = {
+    "User-Agent": "forgotten-cloud-panel",
+    Accept: "application/vnd.github+json",
+  };
+  if (settings.githubToken) headers.Authorization = `Bearer ${settings.githubToken}`;
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "forgotten-cloud-panel", Accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(12_000),
-    });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(12_000) });
     if (!response.ok) return null;
     const body = (await response.json()) as { name?: string }[];
     const tags = body

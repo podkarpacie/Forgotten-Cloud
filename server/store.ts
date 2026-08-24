@@ -18,6 +18,10 @@ export function loadSettings(): PanelSettings {
     merged.engineSourcePath =
       DEFAULT_ENGINE_SOURCES.find((candidate) => fs.existsSync(path.join(candidate, "Cargo.toml"))) ?? "";
   }
+  // A token may also come from the environment so operators can avoid storing it in a file.
+  if (!merged.githubToken && process.env.GITHUB_TOKEN) {
+    merged.githubToken = process.env.GITHUB_TOKEN;
+  }
   return merged;
 }
 

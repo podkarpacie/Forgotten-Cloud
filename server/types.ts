@@ -60,6 +60,9 @@ export interface EngineInstallInfo {
 export interface PanelSettings {
   repoOwner: string;
   repoName: string;
+  /** Optional GitHub token (classic PAT with `repo` scope or fine-grained read-only). Needed
+   * when the engine repository is private: without it the GitHub API hides releases entirely. */
+  githubToken: string;
   engineSourcePath: string;
   preferredMethod: "auto" | "release" | "source" | "local";
   maxBackupsPerServer: number;
@@ -71,6 +74,7 @@ export interface PanelSettings {
 export const DEFAULT_SETTINGS: PanelSettings = {
   repoOwner: "podkarpacie",
   repoName: "Forgotten-Engine",
+  githubToken: "",
   engineSourcePath: "",
   preferredMethod: "auto",
   maxBackupsPerServer: 25,

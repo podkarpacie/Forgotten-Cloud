@@ -113,10 +113,12 @@ async function checkCloudSelfUpdate(): Promise<void> {
   try {
     const settings = loadSettings();
     const url = `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName.replace(/-/g, "-")}/releases?per_page=10`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "forgotten-cloud-panel", Accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(10_000),
-    });
+    const headers: Record<string, string> = {
+      "User-Agent": "forgotten-cloud-panel",
+      Accept: "application/vnd.github+json",
+    };
+    if (settings.githubToken) headers.Authorization = `Bearer ${settings.githubToken}`;
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return;
     const releases = (await response.json()) as { tag_name?: string; draft?: boolean; prerelease?: boolean }[];
     const current = `v${process.env.npm_package_version ?? "2.3.0"}`;

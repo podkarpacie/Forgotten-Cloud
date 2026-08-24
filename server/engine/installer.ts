@@ -23,13 +23,19 @@ async function downloadReleaseAsset(job: EngineJob, version: string): Promise<st
   step(job, "Querying GitHub releases for prebuilt assets…");
   const url = `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName}/releases/tags/${version}`;
   let release: { assets?: { name: string; browser_download_url: string }[] };
+  const headers: Record<string, string> = {
+    "User-Agent": "forgotten-cloud-panel",
+    Accept: "application/vnd.github+json",
+  };
+  if (settings.githubToken) headers.Authorization = `Bearer ${settings.githubToken}`;
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "forgotten-cloud-panel", Accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(15_000),
-    });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
     if (!response.ok) {
-      step(job, `No published release for ${version} (HTTP ${response.status}).`);
+      const hint =
+        response.status === 404 && !settings.githubToken
+          ? " (repository may be private; set a githubToken in Settings)"
+          : "";
+      step(job, `No published release for ${version} (HTTP ${response.status})${hint}.`);
       return null;
     }
     release = (await response.json()) as typeof release;
@@ -53,8 +59,10 @@ async function downloadReleaseAsset(job: EngineJob, version: string): Promise<st
   step(job, `Downloading ${asset.name}…`);
   ensureDirs();
   const zipPath = path.join(PATHS.cacheDir, `${version}-${asset.name}`);
+  const downloadHeaders: Record<string, string> = { "User-Agent": "forgotten-cloud-panel" };
+  if (settings.githubToken) downloadHeaders.Authorization = `Bearer ${settings.githubToken}`;
   const response = await fetch(asset.browser_download_url, {
-    headers: { "User-Agent": "forgotten-cloud-panel" },
+    headers: downloadHeaders,
     signal: AbortSignal.timeout(10 * 60_000),
   });
   if (!response.ok || !response.body) throw new Error(`download failed with HTTP ${response.status}`);
