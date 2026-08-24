@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, Cpu, Download, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, Download, Loader2, RefreshCw, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeading } from "@/components/layout";
@@ -42,6 +42,32 @@ export default function EngineManager() {
     try {
       await apiSend("/install", "POST", { version: tag });
       toast.info(`Install queued for ${tag}`);
+      refresh();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusyVersion(null);
+    }
+  }
+
+  async function reinstall(tag: string) {
+    setBusyVersion(tag);
+    try {
+      await apiSend(`/versions/${encodeURIComponent(tag)}/reinstall`, "POST", {});
+      toast.info(`Reinstall queued for ${tag} — the cached binary will be replaced.`);
+      refresh();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusyVersion(null);
+    }
+  }
+
+  async function uninstall(tag: string) {
+    setBusyVersion(tag);
+    try {
+      await apiSend(`/versions/${encodeURIComponent(tag)}`, "DELETE");
+      toast.success(`${tag} removed`);
       refresh();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : String(cause));
@@ -131,34 +157,62 @@ export default function EngineManager() {
             <p className="text-sm text-muted-foreground">fetching tags…</p>
           ) : (
             <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {catalog.versions.map((version) => (
-                <li
-                  key={version.tag}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border bg-card/40 px-3 py-2 transition-all",
-                    version.installed ? "border-primary/60" : "",
-                  )}
-                >
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">
-                    {version.tag}
-                  </span>
-                  {version.installed ? (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-400">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> installed
+              {catalog.versions.map((version) => {
+                const isLatest = catalog.latestTag === version.tag;
+                return (
+                  <li
+                    key={version.tag}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border bg-card/40 px-3 py-2 transition-all",
+                      version.installed ? "border-primary/60" : "",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">
+                      {version.tag}
                     </span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={busyVersion === version.tag}
-                      onClick={() => void install(version.tag)}
-                    >
-                      <Download className="mr-1 h-3 w-3" />
-                      install
-                    </Button>
-                  )}
-                </li>
-              ))}
+                    {isLatest && (
+                      <Badge variant="outline" className="font-mono text-[9px] text-primary">
+                        latest
+                      </Badge>
+                    )}
+                    {version.installed ? (
+                      <>
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> installed
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={`Re-download ${version.tag} and overwrite the cached binary`}
+                          disabled={busyVersion === version.tag}
+                          onClick={() => void reinstall(version.tag)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={`Remove ${version.tag}`}
+                          disabled={busyVersion === version.tag}
+                          onClick={() => void uninstall(version.tag)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busyVersion === version.tag}
+                        onClick={() => void install(version.tag)}
+                      >
+                        <Download className="mr-1 h-3 w-3" />
+                        install
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>

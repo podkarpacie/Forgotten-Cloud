@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { PATHS, serverMetaDir, serverWorld } from "../paths";
 import { loadServerMeta, loadSettings, saveSettings, saveServerMeta } from "../store";
-import { PROFILES, listVersions } from "../engine/catalog";
-import { getJob, listJobs, startInstall } from "../engine/installer";
+import { PROFILES, listVersions, detectBinaryVersion, installedBinaryPath, outdatedTag, parseTagVersion } from "../engine/catalog";
+import { getJob, listJobs, startInstall, startReinstall, uninstallVersion } from "../engine/installer";
 import * as supervisor from "../engine/supervisor";
 import type { ProfileId } from "../types";
 import { dirSize, httpError } from "../util";
@@ -53,6 +53,51 @@ systemRouter.post("/install", (req, res) => {
   if (!/^fe-v\d/.test(version)) throw httpError(400, "version must be an fe-vX.Y.Z tag");
   const jobId = startInstall(version, "install");
   res.status(202).json({ jobId });
+});
+
+systemRouter.post("/versions/:tag/reinstall", (req, res) => {
+  const version = String(req.params.tag);
+  if (!/^fe-v\d/.test(version)) throw httpError(400, "version must be an fe-vX.Y.Z tag");
+  const jobId = startReinstall(version);
+  res.status(202).json({ jobId });
+});
+
+systemRouter.delete("/versions/:tag", (req, res) => {
+  const version = String(req.params.tag);
+  if (!/^fe-v\d/.test(version)) throw httpError(400, "version must be an fe-vX.Y.Z tag");
+  const result = uninstallVersion(version);
+  if (!result.removed) throw httpError(409, result.error ?? "uninstall failed");
+  res.json({ removed: true, version });
+});
+
+/** Per-version build report: what the installed binary claims vs the newest known release. */
+systemRouter.get("/versions/status", async (req, res, next) => {
+  try {
+    const catalog = await listVersions();
+    const entries = await Promise.all(
+      catalog.versions
+        .filter((version) => version.installed)
+        .map(async (version) => {
+          const binPath = installedBinaryPath(version.tag);
+          const detected = binPath ? await detectBinaryVersion(binPath) : null;
+          return {
+            tag: version.tag,
+            binaryPath: binPath,
+            binaryBuildVersion: detected,
+            binaryMatchesTag:
+              detected !== null && parseTagVersion(`v${detected}`)?.patch === parseTagVersion(version.tag)?.patch,
+            outdatedRelativeToLatest: outdatedTag(version.tag, catalog.latestTag),
+          };
+        }),
+    );
+    res.json({
+      latestTag: catalog.latestTag,
+      catalogSource: catalog.source,
+      installs: entries,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 systemRouter.get("/jobs", (req, res) => {

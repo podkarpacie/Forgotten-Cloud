@@ -3,6 +3,7 @@ import path from "node:path";
 import { PATHS, ensureDirs } from "../paths";
 import { loadSettings } from "../store";
 import type { ProfileInfo } from "../types";
+import { run } from "../util";
 
 export const PROFILES: ProfileInfo[] = [
   {
@@ -47,7 +48,6 @@ interface TagCacheEntry {
   fetchedAt: number;
   tags: string[];
 }
-
 const TAG_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function readTagCache(): TagCacheEntry | null {
@@ -89,6 +89,8 @@ export interface VersionCatalog {
   versions: { tag: string; installed: boolean }[];
   source: "github" | "cache" | "fallback";
   fetchedAt: number;
+  /** Highest known release tag, regardless of install state. */
+  latestTag: string | null;
 }
 
 export async function listVersions(): Promise<VersionCatalog> {
@@ -116,10 +118,12 @@ export async function listVersions(): Promise<VersionCatalog> {
 }
 
 function decorate(source: VersionCatalog["source"], fetchedAt: number, tags: string[]): VersionCatalog {
+  const sorted = sortTags(tags);
   return {
     source,
     fetchedAt,
-    versions: tags.map((tag) => ({ tag, installed: installedBinaryPath(tag) !== null })),
+    latestTag: sorted[0] ?? null,
+    versions: sorted.map((tag) => ({ tag, installed: installedBinaryPath(tag) !== null })),
   };
 }
 
@@ -151,4 +155,44 @@ export function installedBinaryPath(version: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Extracts the semver triple from an fe-vX.Y.Z tag for comparisons. */
+export function parseTagVersion(tag: string): { major: number; minor: number; patch: number } | null {
+  const match = tag.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+/**
+ * Reads the engine's self-reported build version by running `<bin> version` and parsing the
+ * "Forgotten Engine build X.Y.Z" banner. Returns null when the binary cannot be executed or
+ * does not report a recognizable version.
+ */
+export async function detectBinaryVersion(binaryPath: string): Promise<string | null> {
+  try {
+    const result = await run(binaryPath, ["version"], { timeoutMs: 10_000 });
+    const match = result.stdout.match(/Forgotten Engine build (\d+\.\d+\.\d+)/);
+    return match ? (match[1] ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Compares a server's pinned engine tag against the newest known release. Returns the latest
+ * tag when the pinned tag is older; null when current or unknown.
+ */
+export function outdatedTag(pinnedVersion: string, latestTag: string | null): string | null {
+  if (!latestTag || pinnedVersion === latestTag) return null;
+  const pinned = parseTagVersion(pinnedVersion);
+  const latest = parseTagVersion(latestTag);
+  if (!pinned || !latest) return null;
+  const rank = (v: { major: number; minor: number; patch: number }): number =>
+    v.major * 1_000_000 + v.minor * 1_000 + v.patch;
+  return rank(latest) > rank(pinned) ? latestTag : null;
 }

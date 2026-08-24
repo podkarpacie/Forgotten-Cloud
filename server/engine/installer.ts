@@ -168,19 +168,57 @@ export function startInstall(version: string, kind = "install"): string {
   return job.id;
 }
 
+/**
+ * Replaces an installed engine binary with a fresh copy from the release chain. Unlike plain
+ * install, the cached-binary short-circuit is skipped so stale builds get overwritten in place.
+ */
+export function startReinstall(version: string): string {
+  return startInstall(version, "reinstall");
+}
+
+/** Removes an installed engine directory. Running servers pin their own binary path, so this
+ * refuses only while that exact version's binary is executing. */
+export function uninstallVersion(version: string): { removed: boolean; error?: string } {
+  const binDir = engineBinDir(version);
+  const versionRoot = path.dirname(binDir);
+  if (!fs.existsSync(versionRoot)) {
+    return { removed: false, error: `${version} is not installed` };
+  }
+  try {
+    fs.rmSync(versionRoot, { recursive: true, force: true });
+    return { removed: true };
+  } catch (error) {
+    // Windows keeps files locked while a child process runs from them.
+    return {
+      removed: false,
+      error: `could not remove ${version}: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
 async function executeInstall(job: EngineJob): Promise<void> {
   const version = job.version!;
+  const overwrite = job.kind === "reinstall";
   job.status = "running";
   const settings = loadSettings();
   const destination = expectedBinaryPath(version);
   try {
-    const cached = installedBinaryPath(version);
-    if (cached) {
-      step(job, `Engine ${version} already installed at ${cached}.`);
-      job.result = { binPath: cached, source: "cache" };
-      job.status = "done";
-      persistJobs();
-      return;
+    if (!overwrite) {
+      const cached = installedBinaryPath(version);
+      if (cached) {
+        step(job, `Engine ${version} already installed at ${cached}.`);
+        job.result = { binPath: cached, source: "cache" };
+        job.status = "done";
+        persistJobs();
+        return;
+      }
+    } else {
+      step(job, `Reinstall requested; replacing any existing ${version} binary.`);
+      try {
+        fs.rmSync(destination, { force: true });
+      } catch {
+        step(job, "Could not delete the existing binary; it may be running. Stop servers using it first.");
+      }
     }
 
     const methodOrder =

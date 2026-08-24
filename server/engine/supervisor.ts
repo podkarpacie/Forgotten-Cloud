@@ -4,6 +4,7 @@ import path from "node:path";
 import { EventEmitter } from "node:events";
 import { serverMetaDir, serverWorld } from "../paths";
 import { httpError, newId } from "../util";
+import { loadServerMeta } from "../store";
 import type { ConsoleLine, LifecycleStatus } from "../types";
 
 interface SupervisorEntry {
@@ -131,6 +132,37 @@ export async function startServer(
     throw httpError(409, "server is already running");
   }
   const worldDir = serverWorld(id);
+
+  // Version signaler: compare the pinned tag against the newest known release and verify the
+  // installed binary actually matches its tag, so a stale copy masquerading under a new folder
+  // is surfaced immediately at startup.
+  try {
+    const { listVersions, outdatedTag, detectBinaryVersion, installedBinaryPath, parseTagVersion } =
+      await import("../engine/catalog");
+    const catalog = await listVersions();
+    const meta = loadServerMeta(id);
+    if (meta) {
+      const staleTag = outdatedTag(meta.engineVersion, catalog.latestTag);
+      if (staleTag) {
+        pushLine(entry, "system", `You're running an outdated version ${meta.engineVersion}; the latest is ${staleTag}!`);
+      }
+      const binPath = installedBinaryPath(meta.engineVersion);
+      if (binPath) {
+        const detected = await detectBinaryVersion(binPath);
+        const expectedPatch = parseTagVersion(meta.engineVersion)?.patch;
+        const detectedPatch = detected ? parseTagVersion(`v${detected}`)?.patch : undefined;
+        if (detected && expectedPatch !== undefined && detectedPatch !== expectedPatch) {
+          pushLine(
+            entry,
+            "system",
+            `Warning: the installed ${meta.engineVersion} binary reports build ${detected}. It does not match its tag; reinstall this version from the Engine page.`,
+          );
+        }
+      }
+    }
+  } catch {
+    /* version signaling must never block a start */
+  }
 
   entry.runId = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const logsDir = path.join(serverMetaDir(id), "logs");

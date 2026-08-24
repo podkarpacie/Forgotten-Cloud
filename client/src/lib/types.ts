@@ -55,6 +55,7 @@ export interface VersionCatalog {
   versions: { tag: string; installed: boolean }[];
   source: "github" | "cache" | "fallback";
   fetchedAt: number;
+  latestTag?: string | null;
 }
 
 export interface ConsoleLine {
