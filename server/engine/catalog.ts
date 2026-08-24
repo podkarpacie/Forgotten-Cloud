@@ -144,9 +144,10 @@ export function installedBinaryPath(version: string): string | null {
   }
 }
 
-/** Extracts the semver triple from an fe-vX.Y.Z tag for comparisons. */
+/** Extracts the semver triple from an fe-vX.Y.Z tag for comparisons. Tolerates the prefixes
+ * used across the codebase: "fe-v1.2.3", "v1.2.3", and bare "1.2.3". */
 export function parseTagVersion(tag: string): { major: number; minor: number; patch: number } | null {
-  const match = tag.match(/fe-v(\d+)\.(\d+)\.(\d+)/);
+  const match = tag.match(/(?:^|fe-)?v?(\d+)\.(\d+)\.(\d+)$/);
   if (!match) return null;
   return {
     major: Number(match[1]),
