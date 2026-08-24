@@ -133,19 +133,13 @@ export async function startServer(
   }
   const worldDir = serverWorld(id);
 
-  // Version signaler: compare the pinned tag against the newest known release and verify the
-  // installed binary actually matches its tag, so a stale copy masquerading under a new folder
-  // is surfaced immediately at startup.
+  // Version signaler: verify the installed binary actually matches its tag so a stale copy
+  // masquerading under a newer folder is surfaced immediately. Owners choose their own edition;
+  // FE never nags about other editions being available.
   try {
-    const { listVersions, outdatedTag, detectBinaryVersion, installedBinaryPath, parseTagVersion } =
-      await import("../engine/catalog");
-    const catalog = await listVersions();
+    const { detectBinaryVersion, installedBinaryPath, parseTagVersion } = await import("../engine/catalog");
     const meta = loadServerMeta(id);
     if (meta) {
-      const staleTag = outdatedTag(meta.engineVersion, catalog.latestTag);
-      if (staleTag) {
-        pushLine(entry, "system", `You're running an outdated version ${meta.engineVersion}; the latest is ${staleTag}!`);
-      }
       const binPath = installedBinaryPath(meta.engineVersion);
       if (binPath) {
         const detected = await detectBinaryVersion(binPath);

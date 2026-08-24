@@ -1,6 +1,6 @@
 {
   "name": "forgotten-cloud",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "type": "module",
   "license": "MIT",
   "description": "Local control panel for Forgotten Engine servers",

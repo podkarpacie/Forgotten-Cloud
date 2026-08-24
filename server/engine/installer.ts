@@ -5,7 +5,7 @@ import { PATHS, ensureDirs } from "../paths";
 import { loadSettings } from "../store";
 import type { EngineJob } from "../types";
 import { newId, run } from "../util";
-import { engineBinDir, expectedBinaryPath, installedBinaryPath } from "./catalog";
+import { engineBinDir, expectedBinaryPath, installedBinaryPath, detectBinaryVersion, parseTagVersion } from "./catalog";
 
 const jobs = new Map<string, EngineJob>();
 
@@ -206,11 +206,22 @@ async function executeInstall(job: EngineJob): Promise<void> {
     if (!overwrite) {
       const cached = installedBinaryPath(version);
       if (cached) {
-        step(job, `Engine ${version} already installed at ${cached}.`);
-        job.result = { binPath: cached, source: "cache" };
-        job.status = "done";
-        persistJobs();
-        return;
+        // Even cached installs get one cheap identity check so a stale copy cannot masquerade
+        // under a newer tag forever.
+        const detected = await detectBinaryVersion(cached);
+        const expected = parseTagVersion(version)?.patch;
+        if (detected && expected !== undefined && parseTagVersion(`v${detected}`)?.patch !== expected) {
+          step(
+            job,
+            `Cached ${version} binary reports build ${detected}; treating it as stale and reinstalling.`,
+          );
+        } else {
+          step(job, `Engine ${version} already installed at ${cached}.`);
+          job.result = { binPath: cached, source: "cache" };
+          job.status = "done";
+          persistJobs();
+          return;
+        }
       }
     } else {
       step(job, `Reinstall requested; replacing any existing ${version} binary.`);
@@ -234,6 +245,17 @@ async function executeInstall(job: EngineJob): Promise<void> {
         else found = copyLocalOverride();
 
         if (!found) continue;
+        // Identity gate: the binary must self-report the requested build. This catches CDN
+        // cache staleness and wrong-file uploads before they masquerade as an install.
+        const expected = parseTagVersion(version)?.patch;
+        const detected = await detectBinaryVersion(found);
+        if (expected !== undefined && (!detected || parseTagVersion(`v${detected}`)?.patch !== expected)) {
+          step(
+            job,
+            `${method} route rejected: candidate reports build ${detected ?? "unknown"}, expected ${version}.`,
+          );
+          continue;
+        }
         fs.mkdirSync(engineBinDir(version), { recursive: true });
         fs.copyFileSync(found, destination);
         step(job, `Installed engine ${version} → ${destination} (${method}).`);

@@ -104,7 +104,37 @@ const server = app.listen(port, host, () => {
   } else {
     console.log("Network sharing is off (settings: networkAccess = loopback).");
   }
+  void checkCloudSelfUpdate();
 });
+
+/** Compares the running panel version against the newest published Forgotten Cloud release and
+ * prints an update notice into the terminal. Purely informational; never blocks startup. */
+async function checkCloudSelfUpdate(): Promise<void> {
+  try {
+    const settings = loadSettings();
+    const url = `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName.replace(/-/g, "-")}/releases?per_page=10`;
+    const response = await fetch(url, {
+      headers: { "User-Agent": "forgotten-cloud-panel", Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return;
+    const releases = (await response.json()) as { tag_name?: string; draft?: boolean; prerelease?: boolean }[];
+    const current = `v${process.env.npm_package_version ?? "2.3.0"}`;
+    const latest = releases.find((release) => !release.draft && !release.prerelease)?.tag_name;
+    if (!latest || latest === current) return;
+    const rank = (tag: string): number => {
+      const match = tag.match(/(\d+)\.(\d+)\.(\d+)/);
+      return match ? Number(match[1]) * 1_000_000 + Number(match[2]) * 1_000 + Number(match[3]) : -1;
+    };
+    if (rank(latest) > rank(current)) {
+      console.log(
+        `You're running Forgotten Cloud ${current}; the latest is ${latest}! Update from https://github.com/${settings.repoOwner}/${settings.repoName}/releases`,
+      );
+    }
+  } catch {
+    /* offline is fine */
+  }
+}
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {

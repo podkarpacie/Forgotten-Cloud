@@ -114,7 +114,7 @@ function decorate(source: VersionCatalog["source"], fetchedAt: number, tags: str
 
 function sortTags(tags: string[]): string[] {
   const weight = (tag: string): number => {
-    const match = tag.match(/(\d+)\.(\d+)\.(\d+)/);
+    const match = tag.match(/fe-v(\d+)\.(\d+)\.(\d+)/);
     if (!match) return 0;
     return Number(match[1]) * 1_000_000 + Number(match[2]) * 1_000 + Number(match[3]);
   };
@@ -144,7 +144,7 @@ export function installedBinaryPath(version: string): string | null {
 
 /** Extracts the semver triple from an fe-vX.Y.Z tag for comparisons. */
 export function parseTagVersion(tag: string): { major: number; minor: number; patch: number } | null {
-  const match = tag.match(/(\d+)\.(\d+)\.(\d+)/);
+  const match = tag.match(/fe-v(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
   return {
     major: Number(match[1]),
@@ -169,15 +169,30 @@ export async function detectBinaryVersion(binaryPath: string): Promise<string | 
 }
 
 /**
- * Compares a server's pinned engine tag against the newest known release. Returns the latest
- * tag when the pinned tag is older; null when current or unknown.
+ * Compares a server's pinned engine tag against a candidate release only when both belong to
+ * the same edition prefix (the fe-v<MAJOR> segment). Different editions are separate products —
+ * fe-v8.0.0 is never an upgrade for fe-v7.4.x — so cross-edition comparisons return null.
  */
 export function outdatedTag(pinnedVersion: string, latestTag: string | null): string | null {
   if (!latestTag || pinnedVersion === latestTag) return null;
+  const editionOf = (tag: string): number | null => parseTagVersion(tag)?.major ?? null;
+  const pinnedEdition = editionOf(pinnedVersion);
+  if (pinnedEdition === null || pinnedEdition !== editionOf(latestTag)) return null;
   const pinned = parseTagVersion(pinnedVersion);
   const latest = parseTagVersion(latestTag);
   if (!pinned || !latest) return null;
   const rank = (v: { major: number; minor: number; patch: number }): number =>
     v.major * 1_000_000 + v.minor * 1_000 + v.patch;
   return rank(latest) > rank(pinned) ? latestTag : null;
+}
+
+/**
+ * Newest known tag within the same edition as `pinnedVersion`, or null when the tag is unknown
+ * or no same-edition release exists in the catalog.
+ */
+export function newestTagInEdition(pinnedVersion: string, tags: string[]): string | null {
+  const edition = parseTagVersion(pinnedVersion)?.major;
+  if (edition === undefined) return null;
+  const ranked = sortTags(tags.filter((tag) => parseTagVersion(tag)?.major === edition));
+  return ranked[0] ?? null;
 }
