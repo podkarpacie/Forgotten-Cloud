@@ -1,0 +1,21 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="360" rx="20" fill="#14171b"/>
+
+  <!-- Mark -->
+  <g transform="translate(96 108)">
+    <path d="M64 4 122 37v66L64 136 6 103V37L64 4Z" stroke="#3d4550" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M49 83a13 13 0 0 1-1.8-25.9A19 19 0 0 1 87 55a14.5 14.5 0 0 1-2 28H49Z" fill="#aab3bd"/>
+    <path d="M45 96h38" stroke="#aab3bd" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="270" y="172" font-family="'Exo 2','Segoe UI',system-ui,sans-serif" font-size="72" font-weight="600" letter-spacing="1" fill="#e8eaed">Forgotten Cloud</text>
+  <text x="273" y="216" font-family="'JetBrains Mono',Consolas,monospace" font-size="22" letter-spacing="6" fill="#7c8590">LOCAL CONTROL PLANE // FORGOTTEN ENGINE</text>
+
+  <g font-family="'JetBrains Mono',Consolas,monospace" font-size="18" fill="#5b6470">
+    <text x="273" y="266">fe-7.4</text><text x="389" y="266">fe-8.0</text><text x="505" y="266">fe-1.2</text>
+  </g>
+  <g stroke="#333a43" stroke-width="2">
+    <line x1="369" y1="260" x2="381" y2="260"/><line x1="485" y1="260" x2="497" y2="260"/>
+  </g>
+</svg>
