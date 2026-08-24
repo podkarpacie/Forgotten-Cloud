@@ -84,7 +84,10 @@ function writeWorldConfig(meta: ServerMeta): void {
           otclientV8GamePort: meta.ports.otcGame,
           advertisedOtClientV8Host: advertisedHost,
           advertisedOtClientV8GamePort: meta.ports.otcGame,
-          otclientV8ProtocolVersion: 740,
+          // otclientV8ProtocolVersion is deliberately NOT forced here: it belongs to the
+          // operator (default 760 for visible text; 740 also works since FE accepts both
+          // client versions on classic profiles). Overwriting it on every start kept
+          // resetting operator choices back to 740.
           otclientV8NumericAccountIds: true,
           otclientV8LoginPacketEncryption: false,
           otclientV8ProtocolChecksum: false,
