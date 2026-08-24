@@ -46,7 +46,8 @@ async function downloadReleaseAsset(job: EngineJob, version: string): Promise<st
 
   const platformHint = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux";
   const archHint = process.arch === "arm64" ? "aarch64" : "x86_64";
-  const assets = release.assets ?? [];
+  type ReleaseAsset = { id?: number; name: string; browser_download_url: string };
+  const assets = (release.assets ?? []) as ReleaseAsset[];
   const asset =
     assets.find((entry) => /windows/i.test(entry.name) && /x86_64|x64|amd64/i.test(entry.name) && entry.name.endsWith(".zip")) ??
     assets.find((entry) => entry.name.toLowerCase().includes(platformHint)) ??
@@ -59,9 +60,20 @@ async function downloadReleaseAsset(job: EngineJob, version: string): Promise<st
   step(job, `Downloading ${asset.name}…`);
   ensureDirs();
   const zipPath = path.join(PATHS.cacheDir, `${version}-${asset.name}`);
-  const downloadHeaders: Record<string, string> = { "User-Agent": "forgotten-cloud-panel" };
+  // Private repositories do not honor API tokens on browser_download_url (it lives on
+  // assets.githubusercontent.com), so authenticated downloads go through the asset API
+  // endpoint with an octet-stream accept header instead.
+  const useApiDownload = Boolean(settings.githubToken) && typeof asset.id === "number";
+  const downloadUrl =
+    useApiDownload && typeof asset.id === "number"
+      ? `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName}/releases/assets/${asset.id}`
+      : asset.browser_download_url;
+  const downloadHeaders: Record<string, string> = {
+    "User-Agent": "forgotten-cloud-panel",
+    Accept: useApiDownload ? "application/octet-stream" : "application/vnd.github+json",
+  };
   if (settings.githubToken) downloadHeaders.Authorization = `Bearer ${settings.githubToken}`;
-  const response = await fetch(asset.browser_download_url, {
+  const response = await fetch(downloadUrl, {
     headers: downloadHeaders,
     signal: AbortSignal.timeout(10 * 60_000),
   });
