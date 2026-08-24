@@ -165,6 +165,20 @@ export default function SettingsPage() {
                     <Label>Engine source checkout (optional)</Label>
                     <Input value={settings.engineSourcePath} placeholder="path to Forgotten-Engine repo with Cargo.toml" onChange={(event) => update("engineSourcePath", event.target.value)} className="mt-1.5 font-mono text-xs" />
                   </div>
+                  <div>
+                    <Label>GitHub token (private repos)</Label>
+                    <Input
+                      type="password"
+                      value={settings.githubToken ?? ""}
+                      placeholder="ghp_… or fine-grained PAT"
+                      onChange={(event) => update("githubToken", event.target.value)}
+                      className="mt-1.5 font-mono text-xs"
+                    />
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      Required to download engine releases when the repository is private.
+                      Fine-grained read-only Contents access is enough.
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <Label>Local prebuilt binary (optional override)</Label>

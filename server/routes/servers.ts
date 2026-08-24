@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { serverMetaDir, serverWorld } from "../paths";
 import {
@@ -417,8 +418,19 @@ serversRouter.post("/:id/console/input", (req, res) => {
           .catch(() => undefined);
         return res.json({ ok: true, handled: "broadcast" });
       }
+      // Gamemaster verbs forward to the engine's live operator bridge when the world is
+      // running; otherwise they fall back to the CLI for offline-capable effects.
+      case "spawn":
+      case "give":
+      case "tp":
+      case "kick":
+      case "gm":
+      case "status": {
+        const outcome = forwardOperatorCommand(meta.id, meta.engineVersion, command, rest);
+        return res.json(outcome);
+      }
       default:
-        throw httpError(400, `unsupported panel command /${command}; use /clear or /broadcast`);
+        throw httpError(400, `unsupported panel command /${command}; available: clear, broadcast, spawn, give, tp, kick, gm, status`);
     }
   }
 
@@ -426,6 +438,106 @@ serversRouter.post("/:id/console/input", (req, res) => {
   if (!delivered) throw httpError(409, "server is not running; stdin is unavailable");
   res.json({ ok: true, handled: "stdin" });
 });
+
+/** Builds the bridge JSON payload for one console GM verb, or null when the verb/arguments do
+ * not map to a bridge operation. */
+function operatorBridgePayload(
+  command: string,
+  args: string[],
+): Record<string, unknown> | null {
+  switch (command) {
+    case "status":
+      return { op: "status" };
+    case "spawn": {
+      const [entity, player] = args;
+      if (!entity) throw httpError(400, "usage: /spawn <entity> [player]");
+      return { op: "spawn", entity, player: player ?? "" };
+    }
+    case "give": {
+      const [player, itemId, count] = args;
+      if (!player || !itemId) throw httpError(400, "usage: /give <player> <item-id> [count]");
+      return { op: "give", player, item_id: Number(itemId), count: Number(count ?? 1) };
+    }
+    case "tp": {
+      const [from, to] = args;
+      if (!from || !to) throw httpError(400, "usage: /tp <player> <player>");
+      return { op: "tp", from, to };
+    }
+    case "kick": {
+      const [player] = args;
+      if (!player) throw httpError(400, "usage: /kick <player>");
+      return { op: "kick", player };
+    }
+    case "gm": {
+      const scope = args[0];
+      const player = args[1];
+      if ((scope !== "online" && scope !== "offline") || !player) {
+        throw httpError(400, "usage: /gm <online|offline> <player> [level]");
+      }
+      return { op: "gm", player, scope, level: Number(args[2] ?? 1) };
+    }
+    default:
+      return null;
+  }
+}
+
+/** Sends one GM command to the live operator bridge and returns a console-visible result.
+ * When no bridge port is published (server stopped), falls back to the engine CLI so
+ * offline-capable commands still apply. The bridge exchange is async: the reply arrives on the
+ * console feed shortly after the HTTP response returns. */
+function forwardOperatorCommand(
+  id: string,
+  engineVersion: string,
+  command: string,
+  args: string[],
+): { ok: boolean; handled: string; detail?: string } {
+  const payload = operatorBridgePayload(command, args);
+  if (!payload) throw httpError(400, `unsupported command /${command}`);
+
+  const portFile = path.join(serverWorld(id), ".fe-operator-port");
+  let portText = "";
+  try {
+    portText = fs.readFileSync(portFile, "utf-8").trim();
+  } catch {
+    /* no live server */
+  }
+  if (/^\d+$/.test(portText)) {
+    const socket = net.createConnection({ host: "127.0.0.1", port: Number(portText) }, () => {
+      socket.write(`${JSON.stringify(payload)}\n`);
+    });
+    let reply = "";
+    socket.on("data", (chunk: Buffer) => {
+      reply += chunk.toString();
+      if (reply.includes("\n")) {
+        socket.end();
+        supervisor.pushSystemLine(
+          id,
+          `bridge ${command}: ${reply.trim().slice(0, 300) || "no response body"}`,
+        );
+      }
+    });
+    socket.on("error", (error: Error) => {
+      supervisor.pushSystemLine(id, `bridge ${command} failed: ${error.message}`);
+    });
+    return { ok: true, handled: command, detail: "sent to live operator bridge" };
+  }
+
+  // Offline fallback through the engine CLI.
+  const bin = installedBinaryPath(engineVersion);
+  if (!bin) throw httpError(409, "engine binary is not installed and no live server to command");
+  const cliArgs = ["command", serverWorld(id), command, ...args];
+  void run(bin, cliArgs, { timeoutMs: 30_000 })
+    .then((result) => {
+      const text = (result.stdout.trim() || result.stderr.trim()).slice(0, 300);
+      supervisor.pushSystemLine(id, text || `${command} completed`);
+    })
+    .catch(() => undefined);
+  return {
+    ok: true,
+    handled: command,
+    detail: "server offline: queued through the engine CLI",
+  };
+}
 
 // ---- Engine tool bridge ------------------------------------------------------
 

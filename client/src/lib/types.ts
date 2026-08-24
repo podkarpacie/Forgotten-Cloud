@@ -93,6 +93,7 @@ export interface EngineJob {
 export interface PanelSettings {
   repoOwner: string;
   repoName: string;
+  githubToken?: string;
   engineSourcePath: string;
   localEngineBinary: string;
   preferredMethod: "auto" | "release" | "source" | "local";

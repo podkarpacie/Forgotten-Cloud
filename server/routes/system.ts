@@ -24,6 +24,8 @@ systemRouter.put("/settings", (req, res) => {
     ...current,
     repoOwner: (body.repoOwner ?? current.repoOwner).trim() || current.repoOwner,
     repoName: (body.repoName ?? current.repoName).trim() || current.repoName,
+    githubToken:
+      body.githubToken !== undefined ? String(body.githubToken).trim() : (current.githubToken ?? ""),
     engineSourcePath: (body.engineSourcePath ?? current.engineSourcePath).trim(),
     localEngineBinary: (body.localEngineBinary ?? current.localEngineBinary).trim(),
     preferredMethod: body.preferredMethod ?? current.preferredMethod,
