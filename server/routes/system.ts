@@ -162,7 +162,7 @@ const PLUGIN_REGISTRY_SEED: RegistryEntry[] = [
     description:
       "Official MyAAC-style web panel for accounts/characters. Installs into the world's /aac workspace once the SDK contract lands.",
     version: "0.0.1",
-    engineCompatibility: ["fe-7.4", "fe-8.0", "fe-1.2"],
+    engineCompatibility: ["fe-7.4"],
     status: "planned",
   },
 ];

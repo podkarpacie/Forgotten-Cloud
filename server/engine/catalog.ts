@@ -11,23 +11,8 @@ export const PROFILES: ProfileInfo[] = [
     label: "Classic 7.4",
     protocol: 740,
     reference: "Tibia 7.4",
-    blurb: "Native legacy path with login foundation, OTClientV8 native support and bounded melee combat.",
-  },
-  {
-    id: "fe-8.0",
-    label: "Classic 8.0",
-    protocol: 800,
-    reference: "Tibia 8.0",
-    blurb: "Compatibility target for the 8.0 protocol family.",
-    experimental: true,
-  },
-  {
-    id: "fe-1.2",
-    label: "TFS 1.2 era",
-    protocol: 1098,
-    reference: "TFS 1.2 / Tibia 10.98",
-    blurb: "TFS 1.2 behavioral compatibility target.",
-    experimental: true,
+    blurb:
+      "Native legacy path with login foundation, OTClientV8 native support (runnable classic protocols 740 and 760) and bounded melee combat.",
   },
 ];
 

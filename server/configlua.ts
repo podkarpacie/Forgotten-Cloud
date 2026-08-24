@@ -52,7 +52,7 @@ export const CONFIG_SCHEMA: {
   },
   { key: "otclientV8LoginPort", group: "OTClientV8 native", type: "number", default: "7174", label: "OTC login port" },
   { key: "otclientV8GamePort", group: "OTClientV8 native", type: "number", default: "7175", label: "OTC game port" },
-  { key: "otclientV8ProtocolVersion", group: "OTClientV8 native", type: "number", default: "740", label: "OTC protocol version", hint: "740 is the only runnable native path; 800 needs unimplemented RSA/XTEA.", advanced: true },
+  { key: "otclientV8ProtocolVersion", group: "OTClientV8 native", type: "number", default: "760", label: "OTC protocol version", hint: "760 recommended (clients render chat/Look text); 740 runs but stock OTCv8 discards all text below 760.", advanced: true },
   { key: "advertisedOtClientV8Host", group: "OTClientV8 native", type: "string", default: '"127.0.0.1"', label: "Advertised OTC host", advanced: true },
   { key: "advertisedOtClientV8GamePort", group: "OTClientV8 native", type: "number", default: "7175", label: "Advertised OTC game port", advanced: true },
   { key: "otclientV8NumericAccountIds", group: "OTClientV8 native", type: "boolean", default: "true", label: "Numeric account IDs", advanced: true },
