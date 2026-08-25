@@ -73,8 +73,12 @@ async function downloadReleaseAsset(job: EngineJob, version: string): Promise<st
     Accept: useApiDownload ? "application/octet-stream" : "application/vnd.github+json",
   };
   if (settings.githubToken) downloadHeaders.Authorization = `Bearer ${settings.githubToken}`;
-  const response = await fetch(downloadUrl, {
+  // Cache-buster: identical asset URLs across rebuilds can serve stale CDN bytes, so every
+  // download is made unique and skips any local HTTP cache.
+  const bustUrl = `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}_=${Date.now()}`;
+  const response = await fetch(bustUrl, {
     headers: downloadHeaders,
+    cache: "no-store",
     signal: AbortSignal.timeout(10 * 60_000),
   });
   if (!response.ok || !response.body) throw new Error(`download failed with HTTP ${response.status}`);
