@@ -428,6 +428,10 @@ serversRouter.post("/:id/console/input", (req, res) => {
       case "tp":
       case "kick":
       case "gm":
+      case "heal":
+      case "playerinfo":
+      case "goto":
+      case "tome":
       case "status": {
         const outcome = forwardOperatorCommand(meta.id, meta.engineVersion, command, rest);
         return res.json(outcome);
@@ -470,6 +474,22 @@ function operatorBridgePayload(
       const [player] = args;
       if (!player) throw httpError(400, "usage: /kick <player>");
       return { op: "kick", player };
+    }
+    case "heal": {
+      const [player] = args;
+      if (!player) throw httpError(400, "usage: /heal <player>");
+      return { op: "heal", player };
+    }
+    case "playerinfo": {
+      const [player, scope = "offline"] = args;
+      if (!player) throw httpError(400, "usage: /playerinfo <player>");
+      return { op: "playerinfo", player, scope };
+    }
+    case "goto":
+    case "tome": {
+      const [target] = args;
+      if (!target) throw httpError(400, `usage: /${command} <player>`);
+      return { op: command === "goto" ? "goto" : "tome", player: target };
     }
     case "gm": {
       const scope = args[0];
