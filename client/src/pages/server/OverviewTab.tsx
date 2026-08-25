@@ -1,6 +1,16 @@
 import { motion } from "framer-motion";
-import { Activity, Clock, HardDrive, KeyRound, Map, RefreshCw, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Activity,
+  ArrowUpCircle,
+  Clock,
+  HardDrive,
+  KeyRound,
+  Map,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { apiGet, apiSend } from "@/lib/api";
@@ -20,6 +30,24 @@ interface ToolResult {
 export default function OverviewTab({ meta, runtime, onChanged }: Props) {
   const [toolBusy, setToolBusy] = useState<string | null>(null);
   const [toolOutput, setToolOutput] = useState<Record<string, ToolResult>>({});
+  const [versions, setVersions] = useState<{ tag: string; installed: boolean }[]>([]);
+  const [latestTag, setLatestTag] = useState<string | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+
+  const refreshVersions = useCallback(() => {
+    apiGet<{ versions: { tag: string; installed: boolean }[]; latestTag?: string | null }>(
+      "/versions",
+    )
+      .then((body) => {
+        setVersions(body.versions);
+        setLatestTag(body.latestTag ?? null);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    refreshVersions();
+  }, [refreshVersions]);
 
   useEffect(() => {
     if (runtime.status !== "running") onChanged();
@@ -37,6 +65,31 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
       setToolBusy(null);
     }
   }
+
+  async function upgradeEngine(tag: string) {
+    setUpgrading(true);
+    try {
+      await apiSend(`/servers/${meta.id}`, "PATCH", { engineVersion: tag });
+      toast.success(`${meta.name} will use ${tag} on next start.`);
+      onChanged();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setUpgrading(false);
+    }
+  }
+
+  // Same-edition upgrades only: fe-v7.4.x worlds upgrade within the 7.4 edition.
+  const upgradeCandidates = versions.filter(
+    (version) =>
+      version.installed &&
+      version.tag.startsWith("fe-v7.4.") &&
+      version.tag !== meta.engineVersion,
+  );
+  const newerAvailable =
+    latestTag?.startsWith("fe-v7.4.") &&
+    latestTag !== meta.engineVersion &&
+    upgradeCandidates.some((candidate) => candidate.tag === latestTag);
 
   const ports: [string, number | null | undefined][] = [
     ["status", meta.ports.status],
@@ -89,6 +142,47 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
             label="autobackup"
             value={meta.autoBackup.enabled ? `every ${meta.autoBackup.intervalHours}h` : "off"}
           />
+          {(newerAvailable || upgradeCandidates.length > 0) && runtime.status !== "running" && (
+            <div className="border-t pt-2">
+              {newerAvailable && (
+                <Button
+                  size="sm"
+                  className="mb-2 w-full"
+                  disabled={upgrading}
+                  onClick={() => void upgradeEngine(latestTag!)}
+                >
+                  <ArrowUpCircle className="mr-1 h-3.5 w-3.5" />
+                  Upgrade to {latestTag}
+                </Button>
+              )}
+              {upgradeCandidates.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    switch engine:
+                  </span>
+                  {upgradeCandidates.map((candidate) => (
+                    <button
+                      key={candidate.tag}
+                      className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] hover:bg-accent disabled:opacity-50"
+                      disabled={upgrading || candidate.tag === latestTag}
+                      title={`Switch this world to ${candidate.tag}`}
+                      onClick={() => void upgradeEngine(candidate.tag)}
+                    >
+                      {candidate.tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                Player data survives version switches.
+              </p>
+            </div>
+          )}
+          {runtime.status === "running" && (newerAvailable || upgradeCandidates.length > 0) && (
+            <p className="text-[10px] text-muted-foreground">
+              Stop the server to switch engines.
+            </p>
+          )}
         </CardContent>
       </Card>
 

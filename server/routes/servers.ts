@@ -273,15 +273,28 @@ serversRouter.patch("/:id", (req, res) => {
   const body = req.body as Partial<Pick<ServerMeta, "name" | "motd">> & {
     ports?: Partial<ServerPorts>;
     reassignPorts?: boolean;
+    engineVersion?: string;
   };
   if (body.name) meta.name = body.name.trim().slice(0, 39);
   if (body.motd !== undefined) meta.motd = String(body.motd).slice(0, 256);
   if (body.reassignPorts || body.ports) {
     meta.ports = { ...meta.ports, ...(body.ports ?? {}) };
   }
+  // Engine version upgrades: the target must be an installed binary. Player data lives in
+  // the world's SQLite database and survives version switches untouched.
+  if (body.engineVersion !== undefined) {
+    const requested = body.engineVersion.trim();
+    if (!/^fe-v\d/.test(requested)) throw httpError(400, "engineVersion must be an fe-vX.Y.Z tag");
+    const bin = installedBinaryPath(requested);
+    if (!bin) throw httpError(409, `engine ${requested} is not installed; install it from the Engine page first`);
+    meta.engineVersion = requested;
+  }
   writeWorldConfig(meta);
   saveServerMeta(meta);
-  res.json({ meta });
+  res.json({
+    meta,
+    engineInstalled: installedBinaryPath(meta.engineVersion) !== null,
+  });
 });
 
 serversRouter.delete("/:id", async (req, res, next) => {
