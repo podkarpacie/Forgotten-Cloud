@@ -1,6 +1,18 @@
 import { motion } from "framer-motion";
-import { HeartHandshake, Moon, Network, Palette, Save, Settings2, Sun, Sunrise } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  DownloadCloud,
+  HeartHandshake,
+  Loader2,
+  Moon,
+  Network,
+  Palette,
+  RefreshCw,
+  Save,
+  Settings2,
+  Sun,
+  Sunrise,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeading } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -16,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { apiGet, apiSend } from "@/lib/api";
-import type { PanelSettings } from "@/lib/types";
+import type { PanelSettings, SelfUpdateStatus } from "@/lib/types";
 import { useTheme, type ThemeAccent, type ThemeMode } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +51,35 @@ export default function SettingsPage() {
   const theme = useTheme();
   const [settings, setSettings] = useState<PanelSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<SelfUpdateStatus | null>(null);
+
+  const refreshUpdate = useCallback(() => {
+    apiGet<SelfUpdateStatus>("/panel/update/status")
+      .then(setUpdateStatus)
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     apiGet<PanelSettings>("/settings").then(setSettings);
-  }, []);
+    refreshUpdate();
+  }, [refreshUpdate]);
+
+  // Poll while an update runs so step logs stream into the card.
+  useEffect(() => {
+    if (updateStatus?.status !== "running") return;
+    const timer = setInterval(refreshUpdate, 2_000);
+    return () => clearInterval(timer);
+  }, [updateStatus?.status, refreshUpdate]);
+
+  async function runSelfUpdate() {
+    try {
+      await apiSend("/panel/update", "POST", {});
+      toast.info("Update started — the panel will restart automatically when done.");
+      refreshUpdate();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
 
   async function save() {
     if (!settings) return;
@@ -185,12 +222,55 @@ export default function SettingsPage() {
                   <Input value={settings.localEngineBinary} placeholder="…\target\release\forgotten-engine.exe" onChange={(event) => update("localEngineBinary", event.target.value)} className="mt-1.5 font-mono text-xs" />
                 </div>
 
+                {/* Panel self-update */}
+                <div className="border-t pt-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <DownloadCloud className="h-4 w-4 text-primary" /> Panel updates
+                  </h3>
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      One click: downloads the latest Forgotten Cloud source, keeps your worlds,
+                      engines and settings, reinstalls dependencies, rebuilds, and restarts
+                      automatically (requires launching via start.cmd / start.sh).
+                    </p>
+                    {updateStatus && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono">current: v{updateStatus.currentVersion}</span>
+                        {updateStatus.toVersion && (
+                          <span className="font-mono">→ v{updateStatus.toVersion}</span>
+                        )}
+                      </div>
+                    )}
+                    {updateStatus?.status === "running" ? (
+                      <Button disabled className="w-full sm:w-auto">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating…
+                      </Button>
+                    ) : (
+                      <Button onClick={() => void runSelfUpdate()} className="w-full sm:w-auto">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Update panel now
+                      </Button>
+                    )}
+                    {(updateStatus?.status === "running" ||
+                      updateStatus?.status === "failed") &&
+                      updateStatus.steps.length > 0 && (
+                        <div className="console-scroll max-h-40 overflow-auto rounded-xl border p-2 font-mono text-[11px] text-muted-foreground">
+                          {updateStatus.steps.map((entry, index) => (
+                            <p key={index}>· {entry.message}</p>
+                          ))}
+                          {updateStatus.error && (
+                            <p className="text-red-400">{updateStatus.error}</p>
+                          )}
+                        </div>
+                      )}
+                  </div>
+                </div>
+
                 <div className="border-t pt-4">
                   <h3 className="flex items-center gap-2 text-sm font-semibold">
                     <Network className="h-4 w-4 text-primary" /> Network access
                   </h3>
                   <div className="mt-3 max-w-md">
-                    <Label>Who can reach this panel</Label>
                     <Select value={settings.networkAccess} onValueChange={(value) => update("networkAccess", value as PanelSettings["networkAccess"])}>
                       <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                       <SelectContent>

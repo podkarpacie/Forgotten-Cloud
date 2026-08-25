@@ -6,6 +6,12 @@ import { loadServerMeta, loadSettings, saveSettings, saveServerMeta } from "../s
 import { PROFILES, listVersions, detectBinaryVersion, installedBinaryPath, outdatedTag, parseTagVersion } from "../engine/catalog";
 import { getJob, listJobs, startInstall, startReinstall, uninstallVersion } from "../engine/installer";
 import * as supervisor from "../engine/supervisor";
+import {
+  currentPanelVersion,
+  latestMainVersion,
+  selfUpdateStatus,
+  startSelfUpdate,
+} from "../selfupdate";
 import type { ProfileId } from "../types";
 import { dirSize, httpError } from "../util";
 
@@ -34,6 +40,30 @@ systemRouter.put("/settings", (req, res) => {
     networkAccess: body.networkAccess === "loopback" ? "loopback" : body.networkAccess === "lan" ? "lan" : current.networkAccess,
   });
   res.json(loadSettings());
+});
+
+// ---- Panel self-update -----------------------------------------------------------
+
+systemRouter.get("/panel/update/status", (req, res) => {
+  res.json({
+    ...selfUpdateStatus(),
+    currentVersion: currentPanelVersion(),
+  });
+});
+
+systemRouter.post("/panel/update", (req, res) => {
+  const result = startSelfUpdate();
+  if (!result.started) throw httpError(409, result.error ?? "update unavailable");
+  res.status(202).json({ ok: true });
+});
+
+systemRouter.get("/panel/latest-version", async (req, res, next) => {
+  try {
+    const version = await latestMainVersion();
+    res.json({ latest: version, current: currentPanelVersion() });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // ---- Engine catalog + install jobs ----------------------------------------------

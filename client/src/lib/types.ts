@@ -101,3 +101,12 @@ export interface PanelSettings {
   consoleHistoryLines: number;
   networkAccess: "loopback" | "lan";
 }
+
+export interface SelfUpdateStatus {
+  status: "idle" | "running" | "done" | "failed";
+  fromVersion: string | null;
+  toVersion: string | null;
+  steps: { time: number; message: string }[];
+  error?: string | null;
+  currentVersion: string;
+}
