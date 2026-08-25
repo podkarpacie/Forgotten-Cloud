@@ -1,67 +1,77 @@
 @echo off
 title Forgotten Cloud
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-rem ---- Persistent log: everything the launcher does lands in .cloud\launcher.log ----
+rem ---- Persistent log ----
 if not exist ".cloud" mkdir ".cloud"
-set "LOGFILE=.cloud\launcher.log"
+set "LOGFILE=%CD%\.cloud\launcher.log"
 
 echo ============================================== >> "%LOGFILE%"
 echo [%date% %time%] Launcher session started >> "%LOGFILE%"
-echo ============================================== >> "%LOGFILE%"
-echo [%date% %time%] Launcher session started (log: %CD%\%LOGFILE%)
-
-rem ---- Record tool versions for debugging ----
-where node >> "%LOGFILE%" 2>&1
+echo Node: >> "%LOGFILE%"
 node --version >> "%LOGFILE%" 2>&1
-where pnpm >> "%LOGFILE%" 2>&1
-pnpm --version >> "%LOGFILE%" 2>&1
-where npm >> "%LOGFILE%" 2>&1
+echo ============================================== >> "%LOGFILE%"
+echo [launcher] Log file: %LOGFILE%
+node --version
 
-rem ---- First-run bootstrap: install deps and build if missing ----
-if not exist "node_modules" (
-    echo [bootstrap] node_modules missing - installing dependencies...
-    echo [%date% %time%] BOOTSTRAP: installing dependencies with pnpm >> "%LOGFILE%"
-    echo Installing dependencies (this can take a minute)...
-    where pnpm >nul 2>nul && (pnpm install >> "%LOGFILE%" 2>&1) || (npm install --no-audit --no-fund >> "%LOGFILE%" 2>&1)
-    if errorlevel 1 (
-        echo [bootstrap] FAILED - install errors were logged.
-        echo [%date% %time%] BOOTSTRAP FAILED at dependency install >> "%LOGFILE%"
-        goto :fail
-    )
-    echo [bootstrap] Dependencies installed.
+rem ---- Bootstrap: dependencies ----
+if exist "node_modules\.pnpm" goto :deps_ok
+if exist "node_modules\express" goto :deps_ok
+
+echo.
+echo [1/2] Installing dependencies (this can take a minute)...
+echo [%date% %time%] BOOTSTRAP: installing dependencies >> "%LOGFILE%"
+where pnpm >nul 2>nul
+if %errorlevel%==0 (
+    call pnpm install
+) else (
+    call npm install --no-audit --no-fund
 )
-
-if not exist "dist\server\index.js" (
-    echo [bootstrap] dist missing - building panel...
-    echo [%date% %time%] BOOTSTRAP: building panel >> "%LOGFILE%"
-    echo Building panel (first build can take a minute)...
-    where pnpm >nul 2>nul && (pnpm run build >> "%LOGFILE%" 2>&1) || (npm run build >> "%LOGFILE%" 2>&1)
-    if errorlevel 1 (
-        echo [bootstrap] FAILED - build errors were logged.
-        echo [%date% %time%] BOOTSTRAP FAILED at build >> "%LOGFILE%"
-        goto :fail
-    )
-    echo [bootstrap] Build complete.
+if not %errorlevel%==0 (
+    echo.
+    echo [bootstrap] FAILED to install dependencies. Details in launcher.log
+    echo [%date% %time%] BOOTSTRAP FAILED at dependency install >> "%LOGFILE%"
+    pause
+    exit /b 1
 )
+echo [bootstrap] Dependencies installed.
 
-echo [bootstrap] Ready. Panel output follows.
+:deps_ok
+rem ---- Bootstrap: build ----
+if exist "dist\server\index.js" goto :ready
+
+echo.
+echo [2/2] Building panel (first build can take a minute)...
+echo [%date% %time%] BOOTSTRAP: building panel >> "%LOGFILE%"
+where pnpm >nul 2>nul
+if %errorlevel%==0 (
+    call pnpm run build
+) else (
+    call npm run build
+)
+if not %errorlevel%==0 (
+    echo.
+    echo [bootstrap] FAILED to build. Details in launcher.log
+    echo [%date% %time%] BOOTSTRAP FAILED at build >> "%LOGFILE%"
+    pause
+    exit /b 1
+)
+echo [bootstrap] Build complete.
+
+:ready
+echo.
+echo [launcher] Ready. Panel output follows. Ctrl+C twice stops everything.
+echo [%date% %time%] Entering restart loop >> "%LOGFILE%"
 
 :loop
 echo.
 echo [%date% %time%] Starting Forgotten Cloud panel...
 echo [%date% %time%] PANEL START >> "%LOGFILE%"
-node dist\server\index.js 2>> "%LOGFILE%"
+call node dist\server\index.js
 set "EXITCODE=%errorlevel%"
 echo [%date% %time%] PANEL EXITED code=%EXITCODE% >> "%LOGFILE%"
 echo.
-echo [%date% %time%] Panel exited (code=%EXITCODE%). Restarting in 3 seconds... Press Ctrl+C twice to stop for good.
+echo [%date% %time%] Panel exited (code=%EXITCODE%). Restarting in 3 seconds... Close this window or press Ctrl+C twice to stop for good.
 timeout /t 3 /nobreak >nul
 goto loop
-
-:fail
-echo.
-echo Startup failed. Full details: %CD%\%LOGFILE%
-echo [%date% %time%] LAUNCHER FAILED - stopping. >> "%LOGFILE%"
-pause
