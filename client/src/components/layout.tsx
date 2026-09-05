@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, Cpu, LayoutDashboard, Palette, Plus } from "lucide-react";
+import { Boxes, Cpu, Gamepad2, LayoutDashboard, Palette, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { BrandHeader } from "./brand";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/create", label: "New server", icon: Plus },
+  { href: "/clients", label: "Clients", icon: Gamepad2 },
   { href: "/engine", label: "Engine & versions", icon: Cpu },
   { href: "/plugins", label: "Plugins", icon: Boxes },
 ];

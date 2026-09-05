@@ -5,6 +5,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { AppShell } from "./components/layout";
 import { ThemeProvider } from "./lib/theme";
 import CreateServer from "./pages/CreateServer";
+import ClientsPage from "./pages/ClientsPage";
 import Dashboard from "./pages/Dashboard";
 import EngineManager from "./pages/EngineManager";
 import NotFound from "./pages/NotFound";
@@ -18,6 +19,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/create" component={CreateServer} />
+        <Route path="/clients" component={ClientsPage} />
         <Route path="/engine" component={EngineManager} />
         <Route path="/plugins" component={PluginsPage} />
         <Route path="/settings" component={SettingsPage} />

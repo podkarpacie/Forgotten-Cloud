@@ -3,12 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { backupsRouter, importServerFromZip } from "./routes/backups";
+import { clientsRouter } from "./routes/clients";
 import { databaseRouter } from "./routes/database";
 import { filesRouter } from "./routes/files";
 import { serversRouter } from "./routes/servers";
 import { systemRouter } from "./routes/system";
 import { ensureDirs, PATHS } from "./paths";
 import { loadSettings } from "./store";
+import { currentPanelVersion, latestMainVersion } from "./selfupdate";
 import { httpError } from "./util";
 
 ensureDirs();
@@ -34,6 +36,7 @@ app.use("/api/servers", serversRouter);
 app.use("/api/servers", filesRouter);
 app.use("/api/servers", databaseRouter);
 app.use("/api/servers", backupsRouter);
+app.use("/api/clients", clientsRouter);
 app.use("/api", systemRouter);
 
 // Import an exported world zip as a new server.
@@ -107,22 +110,12 @@ const server = app.listen(port, host, () => {
   void checkCloudSelfUpdate();
 });
 
-/** Compares the running panel version against the newest published Forgotten Cloud release and
- * prints an update notice into the terminal. Purely informational; never blocks startup. */
+/** Compares the running panel version against the newest version published on the Forgotten
+ * Cloud repository's main branch (via selfupdate.ts). Purely informational; never blocks startup. */
 async function checkCloudSelfUpdate(): Promise<void> {
   try {
-    const settings = loadSettings();
-    const url = `https://api.github.com/repos/${settings.repoOwner}/${settings.repoName.replace(/-/g, "-")}/releases?per_page=10`;
-    const headers: Record<string, string> = {
-      "User-Agent": "forgotten-cloud-panel",
-      Accept: "application/vnd.github+json",
-    };
-    if (settings.githubToken) headers.Authorization = `Bearer ${settings.githubToken}`;
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) return;
-    const releases = (await response.json()) as { tag_name?: string; draft?: boolean; prerelease?: boolean }[];
-    const current = `v${process.env.npm_package_version ?? "2.3.0"}`;
-    const latest = releases.find((release) => !release.draft && !release.prerelease)?.tag_name;
+    const current = currentPanelVersion();
+    const latest = await latestMainVersion();
     if (!latest || latest === current) return;
     const rank = (tag: string): number => {
       const match = tag.match(/(\d+)\.(\d+)\.(\d+)/);
@@ -130,7 +123,7 @@ async function checkCloudSelfUpdate(): Promise<void> {
     };
     if (rank(latest) > rank(current)) {
       console.log(
-        `You're running Forgotten Cloud ${current}; the latest is ${latest}! Update from https://github.com/${settings.repoOwner}/${settings.repoName}/releases`,
+        `You're running Forgotten Cloud ${current}; the latest is ${latest}! Use the panel's self-update or run start.cmd / start.sh again.`,
       );
     }
   } catch {

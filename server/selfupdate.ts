@@ -11,8 +11,10 @@ import { PATHS, ensureDirs } from "./paths";
 import { extract } from "./update-extract";
 import { run } from "./util";
 
-const CLOUD_REPO_OWNER = process.env.FORGETTEN_CLOUD_REPO_OWNER ?? "podkarpacie";
-const CLOUD_REPO_NAME = process.env.FORGETTEN_CLOUD_REPO ?? "Forgotten-Cloud";
+// Correct spellings take precedence; the legacy misspelled names ("FORGETTEN_CLOUD_*") are
+// still honored so pre-existing deployments keep their overrides.
+const CLOUD_REPO_OWNER = process.env.FORGOTTEN_CLOUD_REPO_OWNER ?? process.env.FORGETTEN_CLOUD_REPO_OWNER ?? "podkarpacie";
+const CLOUD_REPO_NAME = process.env.FORGOTTEN_CLOUD_REPO ?? process.env.FORGETTEN_CLOUD_REPO ?? "Forgotten-Cloud";
 
 /// Top-level entries never copied over the running installation. Panel state (.cloud),
 /// dependencies, and build output survive updates by design.
