@@ -11,7 +11,7 @@ No accounts. No registration. Runs on your machine — open `http://127.0.0.1:48
 
 | Area | Features |
 |---|---|
-| **Server creation** | Wizard: name → compatibility profile (`fe-7.4`, `fe-8.0`, `fe-1.2`) → engine release tag → options. Provisions the world via `forgotten-engine init` (panel-side skeleton fallback), auto-allocates a free port block per world. |
+| **Server creation** | Wizard: name → compatibility profile (`fe-7.4`) → engine release tag → options. Provisions the world via `forgotten-engine init` (panel-side skeleton fallback), auto-allocates a free port block per world. |
 | **Engine manager** | Fetches `fe-v*` tags from GitHub (cached, offline fallback list). Installs the matching binary: release asset download → `cargo build --release` from source → local binary copy. Install jobs stream progress. |
 | **Lifecycle** | Start / stop / restart with real PID + uptime; immediate-crash detection surfaces engine errors instead of faking success. |
 | **Console** | Live SSE stream, persisted run logs under `.fc/logs/`, `/broadcast` and `/clear` panel commands, stdin forwarding. |
@@ -23,6 +23,7 @@ No accounts. No registration. Runs on your machine — open `http://127.0.0.1:48
 | **Plugins** | Registry + `data/plugins/<id>/manifest.json` detection and per-world toggles — ready to light up the moment the Forgotten Engine plugin SDK ships. No fabricated ratings or stats. |
 | **Forgotten AAC** | Reserved `aac/` workspace per world for the upcoming MyAAC-style web panel. |
 | **Appearance** | Dark / Light / Midnight modes × 4 accent themes, ambient animations (reducible), remembered via cookies. Fully local preferences. |
+| **Clients** | Per-protocol asset slots (operator-supplied `.spr`/`.dat`), packaged client-build registry, per-world client zip download — pairs Forgotten-Client builds with the world's protocol and connection settings. |
 
 ## Quick start
 
