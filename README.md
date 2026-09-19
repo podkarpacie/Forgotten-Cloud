@@ -43,7 +43,7 @@ Point **Settings → Engine source checkout** at your Forgotten Engine clone to 
 
 ## Honest status
 
-Forgotten Engine itself is ~48% complete (~24% production-ready). Where the engine hasn't shipped yet — full Lua scripting, official-client sessions, AAC bundle — Forgotten Cloud provides working scaffolds and truthful messaging rather than fake buttons. Everything that *is* implemented upstream (init/run/validate lifecycle, config subset, SQLite persistence, backup primitives, OTClientV8 native path) is fully operable through this panel.
+Forgotten Engine itself is ~57% complete on its playable scope (~22% of the full TFS-replacement vision, per Engine `plan.md` / `docs/completion-ledger.md`; figures taken 2026-09-19). Where the engine hasn't shipped yet — full Lua scripting, official-client sessions, AAC bundle — Forgotten Cloud provides working scaffolds and truthful messaging rather than fake buttons. Everything that *is* implemented upstream (init/run/validate lifecycle, config subset, SQLite persistence, backup primitives, OTClientV8 native path) is fully operable through this panel.
 
 ## Repository layout
 
