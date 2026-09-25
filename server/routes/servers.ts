@@ -445,12 +445,13 @@ serversRouter.post("/:id/console/input", (req, res) => {
       case "playerinfo":
       case "goto":
       case "tome":
+      case "reload-scripts":
       case "status": {
         const outcome = forwardOperatorCommand(meta.id, meta.engineVersion, command, rest);
         return res.json(outcome);
       }
       default:
-        throw httpError(400, `unsupported panel command /${command}; available: clear, broadcast, spawn, give, tp, kick, gm, status`);
+        throw httpError(400, `unsupported panel command /${command}; available: clear, broadcast, spawn, give, tp, kick, gm, heal, playerinfo, goto, tome, reload-scripts, status`);
     }
   }
 
@@ -468,6 +469,8 @@ function operatorBridgePayload(
   switch (command) {
     case "status":
       return { op: "status" };
+    case "reload-scripts":
+      return { op: "reload-scripts" };
     case "spawn": {
       const [entity, player] = args;
       if (!entity) throw httpError(400, "usage: /spawn <entity> [player]");
