@@ -29,20 +29,44 @@ export default function ConsoleTab({ id }: { id: string }) {
       .catch(() => undefined);
   }, [id]);
 
-  // Live stream
+  // Live stream with reconnect: the previous close-on-error left the console
+  // silently stale after any network blip until the tab was switched.
   useEffect(() => {
-    const source = new EventSource(`/api/servers/${id}/console/stream`);
-    source.addEventListener("line", (event) => {
-      const line = JSON.parse((event as MessageEvent).data) as ConsoleLine;
-      if (seen.current.has(line.seq)) return;
-      seen.current.add(line.seq);
-      setLines((current) => [...current.slice(-1500), line]);
-    });
-    source.addEventListener("status", (event) => {
-      setRuntime(JSON.parse((event as MessageEvent).data) as RuntimeSnapshot);
-    });
-    source.onerror = () => source.close();
-    return () => source.close();
+    let source: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
+    let attempts = 0;
+
+    function connect() {
+      if (disposed) return;
+      source = new EventSource(`/api/servers/${id}/console/stream`);
+      source.addEventListener("line", (event) => {
+        const line = JSON.parse((event as MessageEvent).data) as ConsoleLine;
+        if (seen.current.has(line.seq)) return;
+        seen.current.add(line.seq);
+        setLines((current) => [...current.slice(-1500), line]);
+      });
+      source.addEventListener("status", (event) => {
+        setRuntime(JSON.parse((event as MessageEvent).data) as RuntimeSnapshot);
+      });
+      source.onopen = () => {
+        attempts = 0;
+      };
+      source.onerror = () => {
+        source?.close();
+        source = null;
+        if (disposed) return;
+        attempts += 1;
+        retryTimer = setTimeout(connect, Math.min(1000 * attempts, 5000));
+      };
+    }
+
+    connect();
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      source?.close();
+    };
   }, [id]);
 
   useEffect(() => {

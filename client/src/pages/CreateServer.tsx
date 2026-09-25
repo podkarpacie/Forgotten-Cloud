@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { apiGet, apiSend } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { ProfileInfo, ServerMeta, VersionCatalog } from "@/lib/types";
+import type { EngineJob, ProfileInfo, ServerMeta, VersionCatalog } from "@/lib/types";
 
 const TEMPLATES = [
   {
@@ -88,6 +88,19 @@ export default function CreateServer() {
           setInstalling(false);
         }
       });
+      // An install that fails would otherwise spin forever: surface the job error.
+      apiGet<{ jobs: EngineJob[] }>("/jobs").then((body) => {
+        const failed = body.jobs.find(
+          (job) =>
+            (job.kind === "install" || job.kind === "reinstall") &&
+            job.version === engineVersion &&
+            job.status === "failed",
+        );
+        if (failed) {
+          setInstalling(false);
+          setError(failed.result?.error ?? `install of ${engineVersion} failed; see the Engine page`);
+        }
+      }).catch(() => undefined);
     }, 3000);
     return () => clearInterval(timer);
   }, [installing, engineVersion]);

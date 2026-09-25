@@ -81,8 +81,6 @@ function writeWorldConfig(meta: ServerMeta): void {
       : {}),
     ...(meta.ports.otcLogin && meta.ports.otcGame
       ? {
-          // The engine only accepts the plain classic 740 native foundation:
-          // protocol 740, numeric accounts, no encryption/checksum/challenge.
           otclientV8NativeEnabled: true,
           otclientV8LoginPort: meta.ports.otcLogin,
           otclientV8GamePort: meta.ports.otcGame,

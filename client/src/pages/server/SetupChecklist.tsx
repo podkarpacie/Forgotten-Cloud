@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiGet, apiSend } from "@/lib/api";
-import type { RuntimeSnapshot, ServerMeta, ServerPorts } from "@/lib/types";
+import type { EngineJob, RuntimeSnapshot, ServerMeta, ServerPorts } from "@/lib/types";
 
 interface SetupState {
   engineInstalled: boolean;
@@ -50,7 +50,8 @@ export default function SetupChecklist({ meta, runtime, onChanged }: Props) {
     refresh();
   }, [refresh, runtime.status]);
 
-  // Track an engine install started from here until the binary lands.
+  // Track an engine install started from here until the binary lands — or surface
+  // the job failure instead of spinning forever.
   useEffect(() => {
     if (busy !== "engine") return;
     const timer = setInterval(() => {
@@ -58,9 +59,21 @@ export default function SetupChecklist({ meta, runtime, onChanged }: Props) {
         setSetup(body);
         if (body.engineInstalled) setBusy(null);
       });
+      apiGet<{ jobs: EngineJob[] }>("/jobs").then((body) => {
+        const failed = body.jobs.find(
+          (job) =>
+            (job.kind === "install" || job.kind === "reinstall") &&
+            job.version === meta.engineVersion &&
+            job.status === "failed",
+        );
+        if (failed) {
+          setBusy(null);
+          toast.error(failed.result?.error ?? `install of ${meta.engineVersion} failed; see the Engine page`);
+        }
+      }).catch(() => undefined);
     }, 3000);
     return () => clearInterval(timer);
-  }, [busy, meta.id]);
+  }, [busy, meta.id, meta.engineVersion]);
 
   async function act(key: string, work: () => Promise<unknown>, success: string) {
     setBusy(key);

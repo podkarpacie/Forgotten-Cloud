@@ -133,6 +133,15 @@ export async function startServer(
   }
   const worldDir = serverWorld(id);
 
+  // A previous unclean shutdown (kill -9, taskkill, dead panel) leaves the engine's
+  // bridge port file behind; the next start would publish a fresh one, but GM verbs
+  // issued in between would dial the dead port. Remove it before spawning.
+  try {
+    fs.rmSync(path.join(worldDir, ".fe-operator-port"), { force: true });
+  } catch {
+    /* discovery hygiene must never block a start */
+  }
+
   // Version signaler: verify the installed binary actually matches its tag so a stale copy
   // masquerading under a newer folder is surfaced immediately. Owners choose their own edition;
   // FE never nags about other editions being available.
@@ -269,6 +278,7 @@ export async function stopServer(id: string): Promise<void> {
   const child = entry.child;
   if (entry.status === "stopped" || !child) {
     if (entry.status !== "stopped") setStatus(entry, id, "stopped");
+    removeBridgePortFile(id);
     return;
   }
   setStatus(entry, id, "stopping");
@@ -287,6 +297,18 @@ export async function stopServer(id: string): Promise<void> {
   if (entry.child === child) {
     entry.child = null;
     entry.pid = null;
+  }
+  removeBridgePortFile(id);
+}
+
+/** Best-effort removal of the engine's bridge discovery file. Safe to call when no
+ * child is supervised here: a live file means a stale one, since this panel owns
+ * the only writer it will ever dial. */
+function removeBridgePortFile(id: string): void {
+  try {
+    fs.rmSync(path.join(serverWorld(id), ".fe-operator-port"), { force: true });
+  } catch {
+    /* discovery hygiene must never fail a stop */
   }
 }
 
