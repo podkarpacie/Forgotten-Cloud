@@ -56,3 +56,5 @@ Routes: `/` dashboard · `/create` wizard · `/engine` versions · `/plugins` re
 - Backup → restore roundtrip preserves world content and drops archive metadata files
 - Export zip downloads; import zip creates a new server with a fresh port block
 - Database browser lists engine tables (accounts/players/engine_events/…) from a real SQLite file
+- Player panel bridges account/player CLI verbs plus quest-flag storage (`player-storage-get/set/count/list`); console offers `/storage <player> <op> [key] [value]`
+- Overview engine tools include `debug-map` (stopped server only): generates a walkable item showroom + spawn camp from operator content

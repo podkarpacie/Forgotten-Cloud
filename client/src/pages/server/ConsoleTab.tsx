@@ -131,7 +131,7 @@ export default function ConsoleTab({ id }: { id: string }) {
           onChange={(event) => setInput(event.target.value)}
           placeholder={
             runtime?.status === "running"
-              ? "stdin line · /broadcast hello · /clear"
+              ? "stdin line · /broadcast hello · /storage 3 get 1000 · /reload-scripts · /clear"
               : "/clear works while offline; stdin needs a running server"
           }
           className="font-mono text-sm"

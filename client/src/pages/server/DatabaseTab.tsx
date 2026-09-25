@@ -224,6 +224,9 @@ function PlayersPanel({ id }: { id: string }) {
     playerName: "",
     accountId: "",
     vocationId: "",
+    storagePlayerId: "",
+    storageKey: "",
+    storageValue: "",
   });
 
   async function act(action: string, extra: Record<string, string | undefined> = {}) {
@@ -285,6 +288,32 @@ function PlayersPanel({ id }: { id: string }) {
               {input("vocationId", "vocation id (opt.)")}
               <Button size="sm" disabled={busy} onClick={() => void act("player-create", { accountId: form.accountId, name: form.playerName, vocationId: form.vocationId || undefined })}>
                 create
+              </Button>
+            </div>
+          </section>
+          <section className="rounded-xl border p-4 md:col-span-2">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Database className="h-4 w-4 text-primary" /> Quest storage
+            </h4>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Bounded per-player key/value flags (<code>player storage</code>). Missing keys read
+              as <code>absent</code>; at most 1,024 keys per player.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {input("storagePlayerId", "player id")}
+              {input("storageKey", "key (opt. for count/list)")}
+              {input("storageValue", "value (set only)")}
+              <Button size="sm" disabled={busy} onClick={() => void act("player-storage-get", { playerId: form.storagePlayerId, key: form.storageKey })}>
+                get
+              </Button>
+              <Button size="sm" disabled={busy} onClick={() => void act("player-storage-set", { playerId: form.storagePlayerId, key: form.storageKey, value: form.storageValue })}>
+                set
+              </Button>
+              <Button size="sm" disabled={busy} onClick={() => void act("player-storage-count", { playerId: form.storagePlayerId })}>
+                count
+              </Button>
+              <Button size="sm" disabled={busy} onClick={() => void act("player-storage-list", { playerId: form.storagePlayerId })}>
+                list
               </Button>
             </div>
           </section>

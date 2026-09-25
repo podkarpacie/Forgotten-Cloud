@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowUpCircle,
   Clock,
+  FlaskConical,
   HardDrive,
   KeyRound,
   Map,
@@ -197,6 +198,7 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
           <ToolButton icon={Map} label="tfs-audit" busy={toolBusy === "tfs-audit"} onClick={() => runTool("tfs-audit")} />
           <ToolButton icon={RefreshCw} label="compatibility" busy={toolBusy === "compatibility"} onClick={() => runTool("compatibility")} />
           <ToolButton icon={KeyRound} label="generate-key" busy={toolBusy === "generate-key"} onClick={() => runTool("generate-key")} />
+          <ToolButton icon={FlaskConical} label="debug-map" busy={toolBusy === "debug-map"} onClick={() => runTool("debug-map")} />
           {Object.entries(toolOutput).map(([tool, result]) => (
             <motion.pre
               key={tool}

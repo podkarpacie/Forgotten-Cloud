@@ -195,6 +195,18 @@ databaseRouter.post("/:id/players/action", express.json(), async (req, res, next
       case "player-respawn":
         args.push("player", "respawn", world, String(body.playerId ?? ""));
         break;
+      case "player-storage-get":
+      case "player-storage-set":
+      case "player-storage-count":
+      case "player-storage-list": {
+        // Quest-flag storage (engine `player storage` verb): key/value bounds are
+        // validated by the CLI, which fails closed with a usage error on bad input.
+        const op = String(body.action).split("-")[2] ?? "";
+        args.push("player", "storage", world, String(body.playerId ?? ""), op);
+        if (body.key !== undefined && body.key !== "") args.push(String(body.key));
+        if (body.value !== undefined && body.value !== "") args.push(String(body.value));
+        break;
+      }
       default:
         throw httpError(400, "unknown player action");
     }

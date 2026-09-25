@@ -450,8 +450,13 @@ serversRouter.post("/:id/console/input", (req, res) => {
         const outcome = forwardOperatorCommand(meta.id, meta.engineVersion, command, rest);
         return res.json(outcome);
       }
+      // Quest-flag storage has no live bridge op; it always runs through the
+      // engine CLI against the world database (works offline and online).
+      case "storage": {
+        return res.json(runStorageCommand(meta.id, meta.engineVersion, rest));
+      }
       default:
-        throw httpError(400, `unsupported panel command /${command}; available: clear, broadcast, spawn, give, tp, kick, gm, heal, playerinfo, goto, tome, reload-scripts, status`);
+        throw httpError(400, `unsupported panel command /${command}; available: clear, broadcast, storage, spawn, give, tp, kick, gm, heal, playerinfo, goto, tome, reload-scripts, status`);
     }
   }
 
@@ -578,6 +583,33 @@ function forwardOperatorCommand(
   };
 }
 
+/** Reads or writes one player's quest-flag storage through the engine CLI and reports
+ * the result on the console feed. Argument shape mirrors the CLI:
+ * `/storage <player> <get|set|count|list> [key] [value]`. */
+function runStorageCommand(
+  id: string,
+  engineVersion: string,
+  args: string[],
+): { ok: boolean; handled: string; detail?: string } {
+  const [player, op, key, value] = args;
+  if (!player || !op) throw httpError(400, "usage: /storage <player> <get|set|count|list> [key] [value]");
+  if (!["get", "set", "count", "list"].includes(op)) {
+    throw httpError(400, `unknown storage op ${op}; expected get, set, count, or list`);
+  }
+  const bin = installedBinaryPath(engineVersion);
+  if (!bin) throw httpError(409, "engine binary is not installed yet");
+  const cliArgs = ["player", "storage", serverWorld(id), player, op];
+  if (key !== undefined) cliArgs.push(key);
+  if (value !== undefined) cliArgs.push(value);
+  void run(bin, cliArgs, { timeoutMs: 30_000 })
+    .then((result) => {
+      const text = (result.stdout.trim() || result.stderr.trim()).slice(0, 300);
+      supervisor.pushSystemLine(id, text ? `storage: ${text}` : "storage completed");
+    })
+    .catch(() => undefined);
+  return { ok: true, handled: "storage", detail: "queued through the engine CLI" };
+}
+
 // ---- Engine tool bridge ------------------------------------------------------
 
 const ALLOWED_CLI_ROOTS = new Set([
@@ -587,6 +619,7 @@ const ALLOWED_CLI_ROOTS = new Set([
   "generate-key",
   "backup",
   "status",
+  "debug-map",
 ]);
 
 serversRouter.post("/:id/tools/:tool", async (req, res, next) => {
@@ -596,7 +629,7 @@ serversRouter.post("/:id/tools/:tool", async (req, res, next) => {
     if (!ALLOWED_CLI_ROOTS.has(tool)) throw httpError(400, `unsupported tool ${tool}`);
     const bin = installedBinaryPath(meta.engineVersion);
     if (!bin) throw httpError(409, "engine binary is not installed yet");
-    if ((tool === "generate-key" || tool === "validate") && supervisor.isRunning(meta.id)) {
+    if ((tool === "generate-key" || tool === "validate" || tool === "debug-map") && supervisor.isRunning(meta.id)) {
       throw httpError(409, "stop the server before running this tool");
     }
     const args =
