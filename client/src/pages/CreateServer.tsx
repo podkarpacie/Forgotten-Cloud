@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, Loader2, Rocket, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { PageHeading } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,23 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { apiGet, apiSend } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { ProfileInfo, ServerMeta, VersionCatalog } from "@/lib/types";
 
-const TEMPLATES = ["Empty World", "Blank Sandbox", "High Rate Sandbox"];
+const TEMPLATES = [
+  {
+    id: "Empty World",
+    blurb: "Plain FE starter map, default rates. A clean canvas.",
+  },
+  {
+    id: "Blank Sandbox",
+    blurb: "Debug-map world: walkable item showroom, depot tile, spawn camp. Ready to explore.",
+  },
+  {
+    id: "High Rate Sandbox",
+    blurb: "Blank Sandbox plus boosted rates: exp 50×, skill 25×, magic 15×.",
+  },
+];
 
 export default function CreateServer() {
   const [, navigate] = useLocation();
@@ -23,10 +37,14 @@ export default function CreateServer() {
   const [name, setName] = useState("");
   const [profile, setProfile] = useState("fe-7.4");
   const [engineVersion, setEngineVersion] = useState("");
-  const [template, setTemplate] = useState(TEMPLATES[0]);
+  const [template, setTemplate] = useState(TEMPLATES[0].id);
   const [motd, setMotd] = useState("");
   const [enableOtcNative, setEnableOtcNative] = useState(true);
   const [enableLegacyLogin, setEnableLegacyLogin] = useState(false);
+  const [accountName, setAccountName] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [characterName, setCharacterName] = useState("");
+  const [installing, setInstalling] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,21 +55,66 @@ export default function CreateServer() {
         setProfile(body.profiles[0]?.id ?? "fe-7.4");
       }
     });
-    apiGet<VersionCatalog>("/versions").then((body) => {
-      setCatalog(body);
-      setEngineVersion((current) => current || body.versions[0]?.tag || "");
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Engine catalog polling: the wizard requires an installed binary (a world
+  // without its engine is a dead shell), and tracks installs started inline.
+  const refreshCatalog = useCallback(() => {
+    apiGet<VersionCatalog>("/versions").then((body) => {
+      setCatalog(body);
+      setEngineVersion((current) => {
+        if (current && body.versions.some((entry) => entry.tag === current)) return current;
+        return (
+          body.versions.find((entry) => entry.installed)?.tag ??
+          body.latestTag ??
+          body.versions[0]?.tag ??
+          ""
+        );
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    refreshCatalog();
+  }, [refreshCatalog]);
+
+  useEffect(() => {
+    if (!installing) return;
+    const timer = setInterval(() => {
+      apiGet<VersionCatalog>("/versions").then((body) => {
+        setCatalog(body);
+        if (body.versions.some((entry) => entry.tag === engineVersion && entry.installed)) {
+          setInstalling(false);
+        }
+      });
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [installing, engineVersion]);
+
   const profileVersions = useMemo(() => catalog?.versions ?? [], [catalog]);
   const nameValid = /^[A-Za-z0-9][A-Za-z0-9 _-]{1,38}$/.test(name);
+  const selectedInstalled = profileVersions.some(
+    (entry) => entry.tag === engineVersion && entry.installed,
+  );
+
+  async function installEngine() {
+    setInstalling(true);
+    setError(null);
+    try {
+      await apiSend("/install", "POST", { version: engineVersion });
+      refreshCatalog();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setInstalling(false);
+    }
+  }
 
   async function create() {
     setCreating(true);
     setError(null);
     try {
-      const result = await apiSend<{ meta: ServerMeta }>("/servers", "POST", {
+      const result = await apiSend<{ meta: ServerMeta; warnings?: string[] }>("/servers", "POST", {
         name,
         profile,
         engineVersion,
@@ -59,7 +122,11 @@ export default function CreateServer() {
         motd,
         enableOtcNative,
         enableLegacyLogin,
+        accountName: accountName.trim() || undefined,
+        accountPassword: accountPassword || undefined,
+        characterName: characterName.trim() || undefined,
       });
+      for (const warning of result.warnings ?? []) toast.warning(warning);
       navigate(`/servers/${result.meta.id}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -133,28 +200,27 @@ export default function CreateServer() {
                       Letters, digits, spaces, dashes. Used as the engine serverName.
                     </p>
                   </div>
-                  <div>
-                    <Label>Template</Label>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                      {TEMPLATES.map((candidate) => (
-                        <button
-                          key={candidate}
-                          onClick={() => setTemplate(candidate)}
-                          className={cn(
-                            "rounded-xl border px-3 py-3 text-left transition-all hover:border-transparent",
-                            template === candidate ? "border-primary/60 bg-accent" : "bg-card/50",
-                          )}
-                        >
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <div className="mt-2 text-sm font-semibold">{candidate}</div>
-                        </button>
-                      ))}
+                    <div>
+                      <Label>Template</Label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                        {TEMPLATES.map((candidate) => (
+                          <button
+                            key={candidate.id}
+                            onClick={() => setTemplate(candidate.id)}
+                            className={cn(
+                              "rounded-xl border px-3 py-3 text-left transition-all hover:border-transparent",
+                              template === candidate.id ? "border-primary/60 bg-accent" : "bg-card/50",
+                            )}
+                          >
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <div className="mt-2 text-sm font-semibold">{candidate.id}</div>
+                            <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                              {candidate.blurb}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Templates ship the FE original content skeleton with an FE-native starter map;
-                      richer packs arrive with upstream content drops.
-                    </p>
-                  </div>
                   <div className="flex justify-end">
                     <Button disabled={!nameValid} onClick={() => setStep(1)}>
                       Continue <ArrowRight className="ml-2 h-4 w-4" />
@@ -211,15 +277,31 @@ export default function CreateServer() {
                       </select>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Source: {catalog?.source ?? "…"} · the matching binary is installed on first
-                      start (release asset → cargo build → local copy).
+                      Source: {catalog?.source ?? "…"} · the world is provisioned with the real
+                      engine binary — pick an installed release.
                     </p>
+                    {catalog && engineVersion && !selectedInstalled && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3">
+                        <span className="text-xs text-muted-foreground">
+                          {engineVersion} is not installed yet.
+                        </span>
+                        <Button size="sm" variant="secondary" disabled={installing} onClick={installEngine}>
+                          {installing ? (
+                            <>
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> installing…
+                            </>
+                          ) : (
+                            "Install now"
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <Button variant="ghost" onClick={() => setStep(0)}>
                       Back
                     </Button>
-                    <Button disabled={!engineVersion} onClick={() => setStep(2)}>
+                    <Button disabled={!engineVersion || !selectedInstalled} onClick={() => setStep(2)}>
                       Continue <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -251,6 +333,33 @@ export default function CreateServer() {
                     checked={enableLegacyLogin}
                     onChange={setEnableLegacyLogin}
                   />
+                  <div>
+                    <Label>First login (optional)</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Create an account and starter character now, so the world is playable the
+                      moment it starts. You can add more later in Database → Players & accounts.
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      <Input
+                        placeholder="account name"
+                        value={accountName}
+                        maxLength={32}
+                        onChange={(event) => setAccountName(event.target.value)}
+                      />
+                      <Input
+                        placeholder="password"
+                        type="password"
+                        value={accountPassword}
+                        onChange={(event) => setAccountPassword(event.target.value)}
+                      />
+                      <Input
+                        placeholder="character name"
+                        value={characterName}
+                        maxLength={29}
+                        onChange={(event) => setCharacterName(event.target.value)}
+                      />
+                    </div>
+                  </div>
                   <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
                     Status/game (+ optional OTC/session) ports are auto-allocated in a free block so
                     multiple worlds can run side by side.
@@ -281,6 +390,12 @@ export default function CreateServer() {
                     <dd>{String(enableOtcNative)}</dd>
                     <dt className="label-meta pt-0.5">legacy login</dt>
                     <dd>{String(enableLegacyLogin)}</dd>
+                    <dt className="label-meta pt-0.5">first login</dt>
+                    <dd>
+                      {accountName.trim()
+                        ? `${accountName.trim()}${characterName.trim() ? ` / ${characterName.trim()}` : " (no character)"}`
+                        : "skipped — add one later"}
+                    </dd>
                   </dl>
                   {error && (
                     <p className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">

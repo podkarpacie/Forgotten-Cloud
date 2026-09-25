@@ -2,6 +2,7 @@ import express from "express";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { serverMetaDir, serverWorld } from "../paths";
 import {
   allServerMetas,
@@ -19,6 +20,9 @@ import { dirSize, findFreePortBlock, httpError, newId, primaryLanIp, run } from 
 export const serversRouter = express.Router();
 
 const KNOWN_PROFILES = new Set(["fe-7.4", "fe-8.0", "fe-1.2"]);
+
+/** Wizard templates with real provisioning effects (see POST /). */
+const TEMPLATES = new Set(["Empty World", "Blank Sandbox", "High Rate Sandbox"]);
 
 export async function allocateFreePorts(enableSession: boolean, enableOtc: boolean): Promise<ServerPorts> {
   const used = new Set<number>();
@@ -84,10 +88,10 @@ function writeWorldConfig(meta: ServerMeta): void {
           otclientV8GamePort: meta.ports.otcGame,
           advertisedOtClientV8Host: advertisedHost,
           advertisedOtClientV8GamePort: meta.ports.otcGame,
-          // otclientV8ProtocolVersion is deliberately NOT forced here: it belongs to the
-          // operator (default 760 for visible text; 740 also works since FE accepts both
-          // client versions on classic profiles). Overwriting it on every start kept
-          // resetting operator choices back to 740.
+          // Fresh `init` worlds ship protocol 0 ("unselected"), which the engine
+          // rejects alongside the native path — so unset values default to the
+          // recommended 760. An explicit operator choice (740/760) is preserved.
+          otclientV8ProtocolVersion: nativeProtocolVersion(lua),
           otclientV8NumericAccountIds: true,
           otclientV8LoginPacketEncryption: false,
           otclientV8ProtocolChecksum: false,
@@ -116,6 +120,13 @@ function fixtureNumber(lua: string, key: string, fallback: number): number {
   return raw !== "" && Number.isFinite(value) ? value : fallback;
 }
 
+/** Native client protocol: preserves an explicit 740/760 operator choice, and
+ * defaults everything else (including fresh-init 0) to the recommended 760. */
+function nativeProtocolVersion(lua: string): number {
+  const value = Number(extractValue(lua, "otclientV8ProtocolVersion").raw);
+  return value === 740 || value === 760 ? value : 760;
+}
+
 serversRouter.get("/", (req, res) => {
   const servers = allServerMetas().map((meta) => ({
     ...meta,
@@ -136,6 +147,9 @@ serversRouter.post("/", async (req, res, next) => {
       motd?: string;
       enableLegacyLogin?: boolean;
       enableOtcNative?: boolean;
+      accountName?: string;
+      accountPassword?: string;
+      characterName?: string;
     };
     const name = (body.name ?? "").trim();
     if (!/^[A-Za-z0-9][A-Za-z0-9 _-]{1,38}$/.test(name)) {
@@ -145,6 +159,15 @@ serversRouter.post("/", async (req, res, next) => {
     if (!KNOWN_PROFILES.has(profile)) throw httpError(400, `unknown profile ${profile}`);
     const engineVersion = body.engineVersion?.trim() || "";
     if (!/^fe-v\d/.test(engineVersion)) throw httpError(400, "engineVersion must be an fe-vX.Y.Z tag");
+    const template = body.template ?? "Empty World";
+    if (!TEMPLATES.has(template)) throw httpError(400, `unknown template ${template}`);
+
+    // A world provisioned without its engine binary is a dead shell, not a server:
+    // refuse and point at the Engine page instead of writing a fake skeleton.
+    const bin = installedBinaryPath(engineVersion);
+    if (!bin) {
+      throw httpError(409, `engine ${engineVersion} is not installed; install it from the Engine page first`);
+    }
 
     const id = newId("srv");
     const worldDir = serverWorld(id);
@@ -152,16 +175,56 @@ serversRouter.post("/", async (req, res, next) => {
     fs.mkdirSync(worldDir, { recursive: true });
     fs.mkdirSync(fcDir, { recursive: true });
 
-    // Provision the FE world through the engine CLI when a binary is available;
-    // otherwise fall back to the panel-side skeleton writer.
-    const bin = installedBinaryPath(engineVersion);
-    let provisionedBy = "panel-skeleton";
-    if (bin) {
-      const result = await run(bin, ["init", worldDir, "--profile", profile], { timeoutMs: 60_000 });
-      if (result.code === 0) provisionedBy = "forgotten-engine init";
-      else fs.appendFileSync(path.join(fcDir, "provision.log"), result.stderr + result.stdout);
+    // Provision the FE world through the real engine CLI. Any init failure aborts
+    // creation (and cleans up) instead of leaving an unusable directory behind.
+    const initResult = await run(bin, ["init", worldDir, "--profile", profile], { timeoutMs: 60_000 });
+    if (initResult.code !== 0) {
+      const detail = `${initResult.stdout}${initResult.stderr ? `\n${initResult.stderr}` : ""}`.trim().slice(0, 300);
+      fs.rmSync(worldDir, { recursive: true, force: true });
+      fs.rmSync(fcDir, { recursive: true, force: true });
+      throw httpError(502, `forgotten-engine init failed: ${detail || "no output"}`);
     }
-    ensureContentSkeleton(worldDir);
+
+    // Template effects are real world content, applied here so the wizard's
+    // promises match the world on disk. Failures degrade to warnings: the base
+    // init above already succeeded, so the server itself is still usable.
+    const warnings: string[] = [];
+    if (template === "Blank Sandbox" || template === "High Rate Sandbox") {
+      const debugResult = await run(bin, ["debug-map", worldDir], { timeoutMs: 120_000 });
+      if (debugResult.code !== 0) {
+        const detail = `${debugResult.stdout}${debugResult.stderr ? `\n${debugResult.stderr}` : ""}`.trim().slice(0, 200);
+        warnings.push(`debug map was not generated: ${detail || "no output"}`);
+      } else {
+        applyConfigPatch(worldDir, { mapName: "debug" });
+      }
+    }
+    if (template === "High Rate Sandbox") {
+      applyConfigPatch(worldDir, { rateExp: 50, rateSkill: 25, rateMagic: 15 });
+    }
+
+    // Optional first login: account + starter character so the world is playable
+    // the moment it starts. Engine output is parsed for the numeric account id.
+    const accountName = (body.accountName ?? "").trim();
+    const accountPassword = body.accountPassword ?? "";
+    const characterName = (body.characterName ?? "").trim();
+    if (accountName || accountPassword || characterName) {
+      if (!accountName || !accountPassword) {
+        warnings.push("first login skipped: account name and password are both required");
+      } else {
+        const accountResult = await run(bin, ["account", "create", worldDir, accountName, accountPassword], { timeoutMs: 60_000 });
+        const accountId = /native-account-id=(\d+)/.exec(accountResult.stdout)?.[1];
+        if (accountResult.code !== 0 || !accountId) {
+          const detail = `${accountResult.stdout}${accountResult.stderr ? `\n${accountResult.stderr}` : ""}`.trim().slice(0, 200);
+          warnings.push(`account was not created: ${detail || "no output"}`);
+        } else if (characterName) {
+          const playerResult = await run(bin, ["player", "create", worldDir, accountId, characterName], { timeoutMs: 60_000 });
+          if (playerResult.code !== 0) {
+            const detail = `${playerResult.stdout}${playerResult.stderr ? `\n${playerResult.stderr}` : ""}`.trim().slice(0, 200);
+            warnings.push(`character was not created: ${detail || "no output"}`);
+          }
+        }
+      }
+    }
 
     const ports = await allocateFreePorts(false, Boolean(body.enableOtcNative));
     const meta: ServerMeta = {
@@ -185,14 +248,11 @@ serversRouter.post("/", async (req, res, next) => {
     }
     saveServerMeta(meta);
 
-    if (!bin) {
-      startInstall(engineVersion, "install");
-    }
-
     res.status(201).json({
       meta,
-      provisionedBy,
-      engineInstallQueued: !Boolean(bin),
+      provisionedBy: "forgotten-engine init",
+      template,
+      warnings,
     });
   } catch (error) {
     next(error);
@@ -203,52 +263,6 @@ function applyConfigPatch(worldDir: string, values: Record<string, string | numb
   const file = path.join(worldDir, "config.lua");
   const lua = fs.readFileSync(file, "utf-8");
   fs.writeFileSync(file, applyConfigValues(lua, values));
-}
-
-/** Minimal stand-in for `forgotten-engine init` when no binary exists yet. */
-function ensureContentSkeleton(worldDir: string): void {
-  for (const dir of [
-    "data/actions",
-    "data/chatchannels",
-    "data/creaturescripts",
-    "data/events",
-    "data/globalevents",
-    "data/lib",
-    "data/movements",
-    "data/npc",
-    "data/plugins",
-    "data/spells",
-    "data/talkactions",
-    "data/weapons",
-    "data/world",
-  ]) {
-    fs.mkdirSync(path.join(worldDir, dir), { recursive: true });
-  }
-  const manifest = path.join(worldDir, "data", "content.manifest");
-  if (!fs.existsSync(manifest)) {
-    fs.writeFileSync(
-      manifest,
-      "format=fe-content-v1\nsource=original-forgotten-engine-content-contract\nstatus=empty-skeleton\n",
-    );
-  }
-  const emptyWorld = path.join(worldDir, "data", "world", "empty-world.manifest");
-  if (!fs.existsSync(emptyWorld)) {
-    fs.writeFileSync(
-      emptyWorld,
-      "format=fe-empty-world-v1\nworld=empty\nviewport_radius_x=8\nviewport_radius_y=6\nsource=original-forgotten-engine-content-contract\n",
-    );
-  }
-  const defaultMap = path.join(worldDir, "data", "world", "forgotten.femap");
-  if (!fs.existsSync(defaultMap)) {
-    fs.writeFileSync(
-      defaultMap,
-      "# Forgotten Engine original map document\nformat=fe-map-v1\nspawn=100,100,7\n# x1,y1,x2,y2,z,groundThingId,walkable\nfill=80,80,120,120,7,0,true\n",
-    );
-  }
-  const channels = path.join(worldDir, "data", "chatchannels", "chatchannels.xml");
-  if (!fs.existsSync(channels)) {
-    fs.writeFileSync(channels, '<?xml version="1.0" encoding="UTF-8"?><channels></channels>\n');
-  }
 }
 
 function requireMeta(req: express.Request): ServerMeta {
@@ -264,6 +278,51 @@ serversRouter.get("/:id", (req, res) => {
     meta,
     runtime: supervisor.getRuntimeSnapshot(meta.id),
     engineInstalled: installedBinaryPath(meta.engineVersion) !== null,
+  });
+});
+
+/** First-run checklist state: drives the "getting started" panel card. All reads
+ * are fail-soft — a missing database or config simply reports zeros and blanks. */
+serversRouter.get("/:id/setup", (req, res) => {
+  const meta = requireMeta(req);
+  const world = serverWorld(meta.id);
+  let accounts = 0;
+  let players = 0;
+  let firstAccountId: number | null = null;
+  try {
+    const dbFile = path.join(world, "data", "forgotten-engine.db");
+    if (fs.existsSync(dbFile)) {
+      const db = new DatabaseSync(dbFile, { readOnly: true });
+      try {
+        accounts = (db.prepare("SELECT COUNT(*) AS c FROM accounts").get() as { c: number }).c;
+        players = (db.prepare("SELECT COUNT(*) AS c FROM players").get() as { c: number }).c;
+        firstAccountId = (db.prepare("SELECT id FROM accounts ORDER BY id LIMIT 1").get() as { id: number } | undefined)?.id ?? null;
+      } catch {
+        /* schema not provisioned yet */
+      }
+      db.close();
+    }
+  } catch {
+    /* no database yet */
+  }
+  let mapName = "";
+  try {
+    mapName = extractValue(fs.readFileSync(path.join(world, "config.lua"), "utf-8"), "mapName").raw.replace(/^"|"$/g, "");
+  } catch {
+    /* config not written yet */
+  }
+  const lan = loadSettings().networkAccess === "lan";
+  res.json({
+    engineInstalled: installedBinaryPath(meta.engineVersion) !== null,
+    accounts,
+    players,
+    firstAccountId,
+    mapName,
+    mapFilePresent: mapName ? fs.existsSync(path.join(world, "data", "world", `${mapName}.femap`)) : false,
+    running: supervisor.isRunning(meta.id),
+    host: lan ? (primaryLanIp() ?? "127.0.0.1") : "127.0.0.1",
+    ports: meta.ports,
+    profile: meta.profile,
   });
 });
 
@@ -632,15 +691,32 @@ serversRouter.post("/:id/tools/:tool", async (req, res, next) => {
     if ((tool === "generate-key" || tool === "validate" || tool === "debug-map") && supervisor.isRunning(meta.id)) {
       throw httpError(409, "stop the server before running this tool");
     }
+    // debug-map accepts an optional map name and, on success, points the world's
+    // mapName at the generated map so the next start loads it without manual edits.
+    let mapName: string | null = null;
+    let mapNameError: string | null = null;
     const args =
       tool === "compatibility"
         ? ["compatibility"]
         : [tool, serverWorld(meta.id)];
+    if (tool === "debug-map") {
+      const requested = String((req.body as { name?: string } | undefined)?.name ?? "").trim() || "debug";
+      if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/.test(requested)) {
+        throw httpError(400, "map name must be 1-32 chars: letters, digits, - or _");
+      }
+      if (requested !== "debug") args.push(requested);
+      mapName = requested;
+    }
     const result = await run(bin, args, { timeoutMs: 120_000 });
-    res.json({
-      code: result.code,
-      output: `${result.stdout}${result.stderr ? `\n${result.stderr}` : ""}`.trim(),
-    });
+    const output = `${result.stdout}${result.stderr ? `\n${result.stderr}` : ""}`.trim();
+    if (tool === "debug-map" && result.code === 0 && mapName) {
+      try {
+        applyConfigPatch(serverWorld(meta.id), { mapName });
+      } catch {
+        mapNameError = `map generated but mapName could not be set to "${mapName}"; set it in the Config tab`;
+      }
+    }
+    res.json({ code: result.code, output, ...(mapName ? { mapName, mapNameError } : {}) });
   } catch (error) {
     next(error);
   }

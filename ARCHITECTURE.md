@@ -50,11 +50,14 @@ Routes: `/` dashboard · `/create` wizard · `/engine` versions · `/plugins` re
 
 ## Acceptance checks (verified)
 
-- Create → `forgotten-engine init` runs when binary present; skeleton fallback otherwise
+- Create requires an installed engine binary (no skeleton fallback); the wizard installs inline and blocks until ready
+- Templates have real effects: Blank Sandbox generates the debug map and selects it; High Rate Sandbox adds exp 50× / skill 25× / magic 15×; optional first account + character in the wizard
+- Fresh OTC worlds start: unset client protocol defaults to 760, explicit 740/760 operator choices preserved
+- Overview shows a setup checklist (engine → account → character → map → start) plus a connect card with host/ports/protocol once running
+- Player panel bridges account/player CLI verbs plus quest-flag storage (`player-storage-get/set/count/list`); console offers `/storage <player> <op> [key] [value]`
+- Overview engine tools include `debug-map` (stopped server only): generates a walkable item showroom + spawn camp from operator content and selects it via mapName
 - Start/stop lifecycle with PID/uptime reporting; console SSE delivers live lines
 - Config edits persist to `config.lua` without corrupting unrelated content
 - Backup → restore roundtrip preserves world content and drops archive metadata files
 - Export zip downloads; import zip creates a new server with a fresh port block
 - Database browser lists engine tables (accounts/players/engine_events/…) from a real SQLite file
-- Player panel bridges account/player CLI verbs plus quest-flag storage (`player-storage-get/set/count/list`); console offers `/storage <player> <op> [key] [value]`
-- Overview engine tools include `debug-map` (stopped server only): generates a walkable item showroom + spawn camp from operator content

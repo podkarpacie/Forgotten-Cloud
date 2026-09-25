@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { apiGet, apiSend } from "@/lib/api";
 import type { RuntimeSnapshot, ServerMeta } from "@/lib/types";
+import SetupChecklist from "./SetupChecklist";
 
 interface Props {
   meta: ServerMeta;
@@ -101,7 +102,9 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
   ];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="space-y-4">
+      <SetupChecklist meta={meta} runtime={runtime} onChanged={onChanged} />
+      <div className="grid gap-4 lg:grid-cols-3">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
@@ -211,6 +214,7 @@ export default function OverviewTab({ meta, runtime, onChanged }: Props) {
           ))}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
