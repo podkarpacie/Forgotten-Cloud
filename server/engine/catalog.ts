@@ -18,7 +18,7 @@ export const PROFILES: ProfileInfo[] = [
 
 /** Offline fallback used when GitHub is unreachable; mirrors upstream fe-* tags. */
 const FALLBACK_TAGS = [
-  "fe-v7.4.46", "fe-v7.4.45", "fe-v7.4.44",
+  "fe-v7.4.48", "fe-v7.4.47", "fe-v7.4.46", "fe-v7.4.45", "fe-v7.4.44",
   "fe-v7.4.43", "fe-v7.4.42", "fe-v7.4.41", "fe-v7.4.40",
   "fe-v7.4.39", "fe-v7.4.38", "fe-v7.4.37", "fe-v7.4.36", "fe-v7.4.35",
   "fe-v7.4.34", "fe-v7.4.33", "fe-v7.4.32", "fe-v7.4.31", "fe-v7.4.30",
